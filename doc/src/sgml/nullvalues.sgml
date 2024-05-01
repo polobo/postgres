@@ -1,0 +1,719 @@
+<sect1 id="nullvalues">
+ <title>Null Values</title>
+
+ <indexterm>
+  <primary>null value</primary>
+ </indexterm>
+
+ <para>
+  This section first introduces the concept of null values and then goes
+  on to explain how different parts of the system behave when provided
+  one or more null value inputs.  Examples throughout this section
+  can be executed so long as the following table and rows are created first.
+ </para>
+
+ <programlisting>
+  CREATE TABLE null_examples (
+    id bigint PRIMARY KEY,
+    value integer NULL
+  );
+  INSERT INTO null_examples
+  VALUES (1, 1), (2, NULL), (3, 4);
+ </programlisting>
+
+ <sect2 id="nullvalues-model">
+  <title>Meaning</title>
+  <para>
+   Generally a null value is assumed to mean "unknown", but other interpretations
+   are common.  A data model design may state that a null value
+   is to be used to represent "not applicable" - i.e., that a value is not
+   even possible.  The null value also takes on a literal meaning of "not found"
+   when produced as the result of an outer join.
+  </para>
+ </sect2>
+
+ <sect2 id="nullvalues-usage">
+  <title>Usage</title>
+  <para>
+   A null value, like all values, must have a data type, and is valid for all data types.
+  </para>
+  <para>
+   A null value literal is written as unquoted, case insensitive, NULL.
+   Its type is the pseudo-type unknown but can be cast to any concrete data type.
+   The <link linkend="sql-syntax-constants-generic"><literal>type 'string'</literal></link>
+   syntax, however, will not work as there is no way to express
+   the <literal>NULL</literal> using single quotes.
+  </para>
+  <para>
+  <programlisting>
+  SELECT
+    NULL,
+    pg_typeof(null),
+    pg_typeof(NuLl::text),
+    cast(null as text);
+  </programlisting>
+  <screen>
+   ?column? | pg_typeof | pg_typeof | text
+  ----------+-----------+-----------+------
+            | unknown   | text      |
+  </screen>
+  </para>
+  <para>
+   <programlisting>
+   SELECT text NULL;
+   </programlisting>
+   <screen>
+   ERROR:  column "text" does not exist
+   LINE 1: select text NUll;
+   </screen>
+  </para>
+  <para>
+   The presence of null values in the system results in three-valued logic.
+   In binary logic every outcome is either true or false.  In
+   three-valued logic unknown, represented using a null value, is
+   also an outcome.  Put a bit more formally, the
+   Law of the Excluded Middle does not hold: i.e.,
+   P OR NOT(p) != true; for all p.
+  </para>
+  <para>
+   Aspects of the system that branch based upon
+   whether a condition variable is true or false must therefore
+   decide how to behave when then input condition is a null value.
+   The remaining sub-sections summarize these decisions.
+  </para>
+  <para>
+   In there are two broad classes of such comparison tests: first determining
+   whehow a given value compares to one or more other values, and second, determining
+   how two multi-element values compare to each other.
+  </para>
+ </sect2>
+
+ <sect2 id="nullvalues-cardinalrule">
+  <title>Distinctness - Overcoming the Cardinal Rule of Null Values</title>
+  <para>
+   The cardinal rule, a given null value is never
+   <link linkend="functions-comparison-op-table">equal or unequal</link>
+   to any other non-null.
+  <programlisting>
+   SELECT
+    NULL = NULL as "N = N", NULL != NULL as "N != N",
+    1 = NULL as "1 = N", 1 != NULL as "1 != N",
+    1 = 1 as "1 = 1", 1 != 1 as "1 != 1";
+  </programlisting>
+  <screen>
+   N = N | N != N | 1 = N | 1 != N | 1 = 1 | 1 != 1
+  -------+--------+-------+--------+-------+--------
+         |        |       |        | t     | f
+  </screen>
+   However, as with many rules, there are exceptions
+   <link linkend="nullvalues-multielementcomparison">noted below</link>.  Specifically, when
+   when the two compared values are part of a larger multi-element value.
+   <programlisting>
+     select array[1,2]=array[1,null];
+    </programlisting>
+    <screen>
+      ?column?
+     ----------
+      f
+     (1 row)
+    </screen>
+  </para>
+  <para>
+   Because of this SQL specification mandated rule  checking for a null value has an
+   explicit<literal>IS NULL</literal> test,
+   and additionally there are distinctness tests
+   (e.g., <literal>IS DISTINCT</literal>, and <literal>IS TRUE</literal>)
+   that consider a null value equal to another null value and unequal
+   to any other value. These and other tests are described in
+   <xref linkend="functions-comparison-pred-table"></xref>
+   <programlisting>
+    SELECT id, value,
+     value IS NULL as "IS N",
+     value IS DISTINCT FROM id as "IS D",
+     value != id as "IS !="
+    FROM null_examples;
+   </programlisting>
+   <screen>
+    id | value | IS N | IS D | IS !=
+   ----+-------+------+------+-------
+     1 |     1 | f    | f    | f
+     2 |       | t    | t    |
+     3 |     4 | f    | t    | t
+   </screen>
+  </para>
+  <para>
+   There is also a cardinal warning: when dealing with
+   <link linkend="rowtypes">composite types</link>
+   expressions; <literal>composite IS NULL</literal>
+   and <literal>composite IS NOT NUll</literal>
+   are not the opposites of each other in the case where some,
+   but not all, of the composite's fields are null values.
+   (The case where all fields are null is indistinguishable
+   from the composite as a whole being null.)
+   Write <literal>NOT(composite IS NULL)</literal> instead.
+  <programlisting>
+   SELECT
+     c,
+     c IS NULL as "c IS N",
+     NOT(c IS NULL) as "NOT c IS N",
+     c IS NOT NULL as "c IS NOT N",
+     ROW(value, value) IS NULL as "ROW(v,v) IS N",
+     ROW(value, value) IS NOT NULL as "ROW(v,v) IS NOT N"
+   FROM null_examples AS c;
+  </programlisting>
+  <screen>
+      c   | c IS N | NOT c IS N | c IS NOT N | ROW(v,v) IS N | ROW(v,v) IS NOT N
+   -------+--------+------------+------------+---------------+-------------------
+    (1,1) | f      | t          | t          | f             | t
+    (2,)  | f      | t          | f          | t             | f
+    (3,4) | f      | t          | t          | f             | t
+  </screen>
+   See the <link linkend="nullvalues-multielement">multi-element
+   testing section</link> below for an explanation.
+  </para>
+ </sect2>
+
+ <sect2 id="nullvalues-operations">
+  <title>Null Valued Operands</title>
+  <para>
+   As a general expectation, operator invocation expressions where one of inputs
+   is a null value will result in a null valued output.
+  <programlisting>
+   SELECT
+    1 + null as "Add",
+    'text' || null as "Concatenate";
+  </programlisting>
+  <screen>
+    Add | Concatenate
+   -----+-------------
+        |
+  </screen>
+   Operators that behave otherwise should document their deviation from this norm.
+  </para>
+  <para>
+   A notable example of this is the <literal>IN</literal> operator, which
+   uses equality, not distinctness, for testing.
+   <programlisting>
+    SELECT
+     1 IN (1, null) as "In Present",
+     1 IN (2, null) as "In MIssing",
+     null IN (1, 2) as "N In Non-N",
+     null IN (null, 2) as "N In N";
+   </programlisting>
+   <screen>
+    In Present | In Missing | N In Non-N | N In N
+   ------------+------------+------------+--------
+    t          |            |            |
+   </screen>
+   This is just an extension of the multi-element testing behavior described
+   <link linkend="nullvalues-multielement">below</link>.
+  </para>
+  <para>
+   Experience shows that <literal>CASE</literal> expressions are also prone
+   to bugs since their format encourages binary logic thinking while a
+   <literal>WHEN</literal> test will not consider a null value to be a match.
+   <programlisting>
+    SELECT id, value,
+     CASE WHEN id = value THEN 'Equal' ELSE 'Not Equal' END as "Affirm",
+     CASE WHEN id != value THEN 'Not Equal' ELSE 'Equal' END as "Negate",
+     CASE WHEN value IS NULL THEN 'Null'
+          WHEN id = value THEN 'Equal'
+          ELSE 'Not Equal' END as "Safe Affirm",
+     CASE WHEN value IS NULL THEN 'Null'
+          WHEN id != value THEN 'Not Equal'
+          ELSE 'Equal' END as "Safe Negate"
+    FROM null_examples;
+   </programlisting>
+   <screen>
+    id | value |  Affirm   |  Negate   | Safe Affirm | Safe Negate
+   ----+-------+-----------+-----------+-------------+-------------
+     1 |     1 | Equal     | Equal     | Equal       | Equal
+     2 |       | Not Equal | Equal     | Null        | Null
+     3 |     4 | Not Equal | Not Equal | Not Equal   | Not Equal
+   </screen>
+  </para>
+  <para>
+   The boolean operators <literal>AND</literal> and <literal>OR</literal>
+   will ignore the null value input if the other input is sufficient to
+   to determine the outcome.
+   <programlisting>
+    SELECT
+     true OR null as "T or N",
+     false OR null as "F or N",
+     true AND null  as "T and N",
+     false AND null  as "F and N";
+   </programlisting>
+   <screen>
+     T or N | F or N | T and N | F and N
+    --------+--------+---------+---------
+     t      |        |         | f
+   </screen>
+  </para>
+ </sect2>
+
+ <sect2 id="nullvalues-composites">
+  <title>Null Valued Composite Fields</title>
+  <para>
+   When a composite type is used, a null value can be assigned to any of its fields.
+   So long as at least one field is non-null the composite value as whole exists
+   and an IS NULL test on it will return false.
+  </para>
+  <para>
+   The IS NOT NULL test on a composite performs a test the checks whether
+   all fields of the composite have non-null values.  This is not the same
+   as a non-null composite value.  Specifically, if the composite value has
+   a null valued field then both this test and the IS NULL test will return false.
+  </para>
+  <para>
+   Please read <xref linkend="composite-type-comparison"/> for a complete treatment
+   on how <productname>PostgreSQL</productname> handle row-wise comparison.  The
+   next two multi-element parts of this section discuss those comparisons in the
+   presence of null valued fields and also in terms of the SQL specification.
+  </para>
+ </sect2>
+
+ <sect2 id="nullvalues-multielement">
+  <title>Testing Multi-Element Values with Null Elements</title>
+  <para>
+   Arrays and composite types are multi-element types.  Here we also consider non-empty
+   <link linkend="functions-subquery">subquery results</link>
+   and the list of values specified in the
+   <link linkend="functions-comparisons-in-scalar">IN test</link>.
+   When a test is performed on one of these multi-element values
+   the system will iterate over each element, or pair of elements if the test is
+   <link linkend="row-wise-comparison">comparing two row constructors</link> to each other,
+   left-to-right, combining the results using the boolean operations
+   <link linkend="nullvalues-operations">discussed above</link>. For tests that
+   require an exhaustive search, (e.g., <literal>ALL</literal>, <literal>NOT IN</literal>)
+   the search effectively ends when a false result is found (<literal>AND</literal> combiners).
+   For tests that simply require a true result, (e.g., <literal>ANY</literal>,
+   <literal>IN</literal>) the search effectively ends when a true result is found
+   (<literal>OR</literal> combiners). Therefore:
+   <simplelist>
+    <member>
+     <literal>IN</literal> and <literal>ANY</literal>
+     (<literal>OR</literal>) cannot produce a false result in the presence of null, and
+    </member>
+    <member>
+     <literal>NOT IN</literal> and <literal>ALL</literal>
+     (<literal>AND</literal>) cannot produce a true result in the presence of null.
+    </member>
+   </simplelist>
+   This is because any exhaustive search will produce at least one null value result
+   that cannot be ignored.
+  </para>
+  <para>
+   The SQL specification requires that non-exhaustive
+   (e.g., <literal>IN</literal> and <literal>ANY</literal>) subquery tests
+   return false when there are no rows in the subquery result, and return true
+   for the exhaustive tests (i.e., <literal>ALL</literal>).
+  </para>
+  <para>
+   Note that the <link linkend="nullvalues-cardinalrule">cardinal warning</link>
+   noted above is just the application of this behavior to the
+   <literal>IS NULL</literal> and <literal>IS NOT NULL</literal>
+   tests, which are both exhaustive search tests guaranteed to produce at least one false result
+   when the composite has a mix of null and non-null values.
+  </para>
+  <para>
+   Note that the rules above are applied to situation with a predicate or a scalar value
+   are being compared to a multi-element value.  The rules when two multi-element values are compared
+   to each other are discussed <link linkend="nullvalues-multielementcomparison">next</link>.
+   The two row constructor comparison case included above is also noted below.
+  </para>
+ </sect2>
+
+ <sect2 id="nullvalues-multielementcomparison">
+  <title>Multi-Element Comparisons</title>
+  <para>
+   The <link linkend="nullvalues-multielement">prior section</link> discussed applying
+   a predicate or a scalar value check element-wise across a multi-element value.
+   This section discusses
+   comparing two multi-element values to each other.  As both array and composite typed values
+   can be stored within an index, and comparing two values in that context must not produce
+   a null valued result, considerations are made to adhere to the SQL specification where
+   possible while still making indexes, which the specification is silent on, functional.
+   Specifically, except when comparing two row constructors, null values are considered
+   equal to other null values and greater than all non-null values.
+  </para>
+  <para>
+   There are five pair-wise comparison situations to consider:
+   element-wise when the inputs are arrays, and row-wise when the inputs can be either
+   row constructors or composite typed values.  While these four later combinations seem similar,
+   the fact that row constructors are query literals, while composite typed values can be stored,
+   brings about important differences in how they are treated.  Please read
+   <xref linkend="composite-type-comparison"/> for a fuller treatment of this topic.  Here
+   we briefly recap the five different sitautions in the presence of null values.
+  </para>
+  <sect3 id="nullvalues-multielementcomparison-array">
+   <title>Element-wise Comparisons</title>
+   <para>
+    First,  null values within an array compare as equal to each other and greater than all
+    non-null values, regardless of whether the comparison involves
+    <link linkend="sql-syntax-array-constructors">array constructors</link> or array typed values.
+    <programlisting>
+     select array[1,2]=array[1,null], s, t, s = t, t &gt; s
+     from
+     (values (array[1,2])) sv (s),
+     (values (array[1,null::integer])) st (t);
+    </programlisting>
+    <screen>
+     ?column? |   s   |    t     | ?column? | ?column?
+    ----------+-------+----------+----------+----------
+     f        | {1,2} | {1,NULL} | f        | t
+    </screen>
+   </para>
+  </sect3>
+  <sect3 id="nullvalues-multielementcomparison-rowconstructor">
+   <title>Row-Wise Mutual Row Constructor Comparisons</title>
+   <para>
+    In this situation null values produce unknown when compared to all values.
+    <programlisting>
+     select (1,2)=(1,null), (1,null::integer)=(1,null);
+    </programlisting>
+    <screen>
+      ?column? | ?column?
+     ----------+----------
+               |
+     (1 row)
+    </screen>
+   </para>
+  </sect3>
+  <sect3 id="nullvalues-multielementcomparison-composite">
+   <title>Row-Wise Composite Involved Comparisons</title>
+   <para>
+    In these three situations null values are considered equal to each other and greater than
+    all non-null value.
+   </para>
+   <programlisting>
+    select s, t, s = t, t &lt; (1,2), t = (1,null::integer)
+    from (values ((1,2))) sv (s),
+         (values ((1,null::integer))) st (t);
+   </programlisting>
+   <screen>
+       s   |  t   | ?column? | ?column? | ?column?
+    -------+------+----------+----------+----------
+     (1,2) | (1,) | f        | f        | t
+   </screen>
+  </sect3>
+  <sect3 id="nullvalues-multielementcomparison-sqlconformance">
+   <title>SQL Conformance</title>
+   <para>
+    The SQL specification requires row-wise comparison to return NULL if the
+    result depends on comparing two NULL values or a NULL and a non-NULL.
+    <productname>PostgreSQL</productname> does this only when comparing the
+    results of two row constructors (as in
+    <xref linkend="row-wise-comparison"/>) or comparing a row constructor
+    to the output of a subquery (as in <xref linkend="functions-subquery"/>).
+   </para>
+  </sect3>
+ </sect2>
+
+ <sect2 id="nullvalues-functions">
+  <title>Null Valued Arguments in Normal Function Calls</title>
+  <para>
+   <link linkend="sql-createfunction">Function specifications</link>
+   have a "strictness" attribute that, when set to "strict"
+   (a.k.a. "null on null input") will tell the executor to return a null value for any
+   function call having at least one null valued input, without executing the
+   function.
+  </para>
+  <para>
+   Most functions, especially single argument functions, are defined with strict because without
+   non-null values to act upon they cannot produce a meaningful result.  However, for multi-argument
+   functions, especially <link linkend="xfunc-sql-variadic-functions">variadic functions</link>
+   like concatenate, null values often are simply ignored.
+   This can be different than the choice made by a binary operator performing the same function,
+   like for concatenating text, but not always, like concatenating an element onto an array.
+   <programlisting>
+    SELECT
+     lower(null::text) as "Lower",
+     left('text', null) as "Left",
+     'one' || null as "|| Text Op",
+     concat('one', null) as "concat Text Func",
+     array_append(array[1], null) as "append([], null)",
+     array[1]::integer[] || null::integer as "[] || null",
+     array[1]::integer[] || null::integer[] as "[] || null[]";
+   </programlisting>
+   <screen>
+    Lower | Left | || Text Op | concat Text Func | append([], null) | [] || null | [] || null[]
+   -------+------+------------+------------------+------------------+------------+--------------
+          |      |            | one              | {1,NULL}         | {1,NULL}   | {1}
+   </screen>
+   In short, please read the documentation for the functions you use if they may receive null inputs
+   to understand how they will behave.  Send a documentation comment pointing out any functions
+   that do not behave strictly but whose actual behavior in the presence of null valued input
+   is not described or readily inferred.
+  </para>
+ </sect2>
+
+ <sect2 id="nullvalues-aggregates">
+  <title>Null Valued Arguments in Aggregate and Window Processing</title>
+  <para>
+   When executing an aggregate or window function the state tracking
+   component will remain unchanged even if the underlying processing
+   function returns a null value, whether from being defined strict
+   or it simply returns a null value upon execution.  The aggregation
+   routine will usually ignore the null value and continue processing,
+   as demonstrated in <literal>count(value)</literal> below.
+   <programlisting>
+    SELECT
+     count(*) as "Count",
+     count(value) as "Count Value",
+     count(null_examples) as "Count Composite",
+     count(row(value, value)) as "Count Row"
+    FROM null_examples;
+   </programlisting>
+   <screen>
+    Count | Count Value | Count Composite | Count Row
+   -------+-------------+-----------------+-----------
+        3 |           2 |               3 |         3
+   </screen>
+   Notice the "Count Row" outcome, though.  While we noted in the cardinal warning
+   that a composite whose fields are all null values is indistinguishable from
+   a null value of composite type, the count aggregate does indeed distinguish them,
+   recognizing and counting the non-null composite value produced by the
+   <link linkend="sql-syntax-row-constructors">row constructor</link>
+   <literal>count(row(value, value))</literal>.
+  </para>
+ </sect2>
+
+ <sect2 id="nullvalues-filters">
+  <title>Null Values in Filters</title>
+  <para>
+   A <literal>WHERE</literal> clause that evaluates to a null value for a given row will exclude that row.
+   <programlisting>
+    SELECT id, value FROM null_examples WHERE value = 1;
+   </programlisting>
+   <screen>
+     id | value
+    ----+-------
+      1 |     1
+   </screen>
+  </para>
+ </sect2>
+
+ <sect2 id="nullvalues-constraints">
+  <title>Null Values in Constraints</title>
+  <para>
+   It is possible to define validation expressions
+   (<link linkend="ddl-constraints-check-constraints">check constraints</link>)
+   on tables that ensure only values passing those expressions are inserted.  While
+   this seems like it would behave the same as a filter, the choice here,
+   when an expression evaulates to a null value, is to allow the row to be inserted
+   - the same as a true result.
+   <programlisting>
+    BEGIN;
+    ALTER TABLE null_examples ADD CONSTRAINT value_not_1 CHECK (value != 1);
+    ROLLBACK;
+   </programlisting>
+   <screen>
+    BEGIN
+    ERROR:  check constraint "value_not_1" of relation "null_examples" is violated by some row
+    ROLLBACK
+   </screen>
+   <programlisting>
+    BEGIN;
+    ALTER TABLE null_examples ADD CONSTRAINT value_not_10 CHECK (value != 10);
+    ROLLBACK;
+   </programlisting>
+   <screen>
+    BEGIN
+    ALTER TABLE
+    ROLLBACK
+   </screen>
+   We are using a <link linkend="tutorial-transactions">transaction</link>
+   (begin and rollback) and the alter table command to add two
+   constraints to our null_examples table.  The first constraint prohibits rows with a value
+   of 1, which our row with an id of 1 violates.  Prohibiting the value 10 definitely allows
+   rows with ids 1 and 3 to exist, and since we are not told that some row violates our
+   constraint the null value in the row with id 2 is being accepted as well.
+  </para>
+  <para>
+   The <link linkend="ddl-constraints-not-null"><literal>NOT NULL</literal> column constraint</link>
+   produces the same answer as a <literal>column IS NOT NULL</literal> check constraint but is
+   more concise to write.
+  </para>
+ </sect2>
+
+ <sect2 id="nullvalues-grouping">
+  <title>Null Values When Grouping</title>
+  <para>
+   In the context of both <literal>DISTINCT</literal> and <literal>GROUP BY</literal>
+   it is necessary that all inputs resolve to being either equal to or not equal to all
+   other values.  These features use <link linkend="nullvalues-cardinalrule">distinctness</link>
+   instead of simple equality in order to handle a null value like a definite value equal to
+   another null vale and unequal to all other values.
+   <programlisting>
+    WITH vals (value) AS (VALUES (1), (NULL), (1), (2), (NULL))
+    SELECT
+     value,
+     count(*) as "Count"
+    FROM vals
+    GROUP BY value
+    ORDER BY value;
+   </programlisting>
+   <screen>
+     value | Count
+    -------+-------
+         1 |     2
+         2 |     1
+           |     2
+   </screen>
+   <programlisting>
+    WITH vals (value) AS (VALUES (1), (NULL), (1), (2), (NULL))
+    SELECT DISTINCT value FROM vals
+    ORDER BY value NULLS FIRST;
+   </programlisting>
+   <screen>
+     value
+    -------
+
+         1
+         2
+   </screen>
+  </para>
+ </sect2>
+
+ <sect2 id="nullvalues-ordering">
+  <title>Null Values When Ordering</title>
+  <para>
+   In the context of <literal>ORDER BY</literal>, distinctness rules also apply,
+   though this is insufficient since it must be determined whether or not to
+   present null values before or after all non-null values.  To handle
+   this, the <literal>ORDER BY</literal> clause will let you specify either
+   <literal>NULLS FIRST</literal> or <literal>NULLS LAST</literal>.
+   <programlisting>
+    WITH vals (value) AS (VALUES (1), (NULL), (1), (2), (NULL))
+    SELECT value FROM vals
+    ORDER BY value DESC NULLS FIRST;
+   </programlisting>
+   <screen>
+     value
+    -------
+
+
+         2
+         1
+         1
+   </screen>
+  </para>
+  <para>
+   Note that when dealing with multi-element values the comparison behavior
+   <link linkend="nullvalues-multielementcomparison">described above</link> applies,
+   if the comparison determination rests upon comparing a null value to a non-null value
+   the multi-element value with the null valued component will sort greater than the one
+   with a non-null component.
+  </para>
+ </sect2>
+
+ <sect2 id="nullvalues-indexed">
+  <title>Null Values in Indexes</title>
+  <para>
+   The uniqueness and relative ordering rules applied to null values
+   are defined when creating an index.  For the default
+   <literal>NULLS DISTINCT</literal> uniqueness, equality rules are applied.
+   Specifying <literal>NULLS NOT DISTINCT</literal> will result in
+   <literal>IS DISTINCT FROM</literal> rules being applied whereby all null
+   values are equal to each other.  This setting applies to all columns in the index.
+  </para>
+  <programlisting>
+   BEGIN;
+   CREATE UNIQUE INDEX value_nulls_distinct_implicit ON null_examples (value);
+   CREATE UNIQUE INDEX value_nulls_distinct_explicit ON null_examples (value) NULLS DISTINCT;
+   INSERT INTO null_examples VALUES (4, NULL);
+   ROLLBACK;
+  </programlisting>
+  <screen>
+   BEGIN
+   CREATE INDEX
+   CREATE INDEX
+   INSERT 0 1
+   ROLLBACK
+  </screen>
+    <programlisting>
+   BEGIN;
+   CREATE UNIQUE INDEX value_nulls_not_distinct_explicit ON null_examples (value) NULLS NOT DISTINCT;
+   INSERT INTO null_examples VALUES (4, NULL);
+   ROLLBACK;
+  </programlisting>
+  <screen>
+   BEGIN
+   CREATE INDEX
+   ERROR:  duplicate key value violates unique constraint "value_nulls_not_distinct_explicit"
+   DETAIL:  Key (value)=(null) already exists.
+   ROLLBACK
+  </screen>
+  <para>
+   For ordering, each column in the index gets its own specification of
+   direction and null value placement similar to that found in the
+   <literal>ORDER BY</literal> clause.
+  </para>
+  <para>
+   Note that when dealing with multi-element values the comparison behavior
+   <link linkend="nullvalues-multielementcomparison">described above</link> applies,
+   if the comparison determination rests upon comparing a null value to a non-null value
+   the multi-element value with the null valued component will sort greater than the one
+   with a non-null component.
+  </para>
+ </sect2>
+
+ <sect2 id="nullvalues-settings">
+  <title>Null Valued Settings</title>
+  <para>
+   There are none.  During initializion all settings are assigned a non-null value.
+  </para>
+  <para>
+   This is mostly meaningful for <link linkend="runtime-config-custom">custom settings</link>,
+   thus this section focuses on <link linkend="config-setting-sql">SQL interaction</link>.
+   Unlike settings created by extensions, custom settings can only be textual and the default
+   value for text here is the empty string.
+   <programlisting>
+    SHOW example.string;
+    BEGIN;
+    SELECT set_config('example.string', NULL, true);
+    SELECT current_setting('example.string') IS NULL AS "Setting Is Null";
+    ROLLBACK;
+    SHOW example.string;
+    RESET example.string;
+    SHOW example.string;
+   </programlisting>
+   <screen>
+    ERROR:  unrecognized configuration parameter "example.string"
+    BEGIN
+     set_config
+    ------------
+
+    (1 row)
+
+     Setting Is Null
+    -----------------
+     f
+    (1 row)
+
+    ROLLBACK
+     example.string
+    ----------------
+
+    (1 row)
+
+    RESET
+     example.string
+    ----------------
+
+    (1 row)
+   </screen>
+   Notice two important behaviors: first, even though we passed in a null value to
+   to the <literal>set_config</literal> function, the <literal>current_setting</literal>
+   function returned a non-null value, specifically the empty string.  Second, after ROLLBACK the
+   setting is still present (i.e., the error seen before creating the setting no longer appears),
+   and in fact will remain so until the session ends
+   (i.e., RESET does not restore the non-existence state.)
+  </para>
+  <para>
+    The other ways to specify settings do not have a means to specify null values,
+    a specific non-null value is required as part of the specification of the setting.
+   </para>
+ </sect2>
+
+</sect1>
