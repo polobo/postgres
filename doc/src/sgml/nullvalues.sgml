@@ -45,18 +45,18 @@
    the <literal>NULL</literal> using single quotes.
   </para>
   <para>
-  <programlisting>
-  SELECT
+   <programlisting>
+   SELECT
     NULL,
     pg_typeof(null),
     pg_typeof(NuLl::text),
     cast(null as text);
-  </programlisting>
-  <screen>
+   </programlisting>
+   <screen>
    ?column? | pg_typeof | pg_typeof | text
-  ----------+-----------+-----------+------
+   ----------+-----------+-----------+------
             | unknown   | text      |
-  </screen>
+   </screen>
   </para>
   <para>
    <programlisting>
@@ -73,7 +73,7 @@
    three-valued logic unknown, represented using a null value, is
    also an outcome.  Put a bit more formally, the
    Law of the Excluded Middle does not hold: i.e.,
-   P OR NOT(p) != true; for all p.
+   p OR NOT(p) != true; for all p.
   </para>
   <para>
    Aspects of the system that branch based upon
@@ -91,20 +91,22 @@
  <sect2 id="nullvalues-cardinalrule">
   <title>Distinctness - Overcoming the Cardinal Rule of Null Values</title>
   <para>
-   The cardinal rule, a given null value is never
-   <link linkend="functions-comparison-op-table">equal or unequal</link>
-   to any other non-null.
-  <programlisting>
-   SELECT
+   The cardinal rule, a null value is
+   <link linkend="functions-comparison-op-table">
+    neither equal nor unequal
+   </link>
+   to any value, including other null values.
+   <programlisting>
+    SELECT
     NULL = NULL as "N = N", NULL != NULL as "N != N",
     1 = NULL as "1 = N", 1 != NULL as "1 != N",
     1 = 1 as "1 = 1", 1 != 1 as "1 != 1";
-  </programlisting>
-  <screen>
-   N = N | N != N | 1 = N | 1 != N | 1 = 1 | 1 != 1
-  -------+--------+-------+--------+-------+--------
+   </programlisting>
+   <screen>
+     N = N | N != N | 1 = N | 1 != N | 1 = 1 | 1 != 1
+    -------+--------+-------+--------+-------+--------
          |        |       |        | t     | f
-  </screen>
+   </screen>
    However, as with many rules, there are exceptions
    <link linkend="nullvalues-multielementcomparison">noted below</link>.  Specifically, when
    when the two compared values are part of a larger multi-element value.
@@ -119,12 +121,12 @@
     </screen>
   </para>
   <para>
-   Because of this SQL specification mandated rule  checking for a null value has an
+   Because of this SQL specification mandated rule checking for a null value has an
    explicit<literal>IS NULL</literal> test,
    and additionally there are distinctness tests
    (e.g., <literal>IS DISTINCT</literal>, and <literal>IS TRUE</literal>)
-   that consider a null value equal to another null value and unequal
-   to any other value. These and other tests are described in
+   that consider a null value equal to other null values but unequal
+   to any other value. These, and other tests, are described in
    <xref linkend="functions-comparison-pred-table"></xref>
    <programlisting>
     SELECT id, value,
@@ -134,8 +136,8 @@
     FROM null_examples;
    </programlisting>
    <screen>
-    id | value | IS N | IS D | IS !=
-   ----+-------+------+------+-------
+     id | value | IS N | IS D | IS !=
+    ----+-------+------+------+-------
      1 |     1 | f    | f    | f
      2 |       | t    | t    |
      3 |     4 | f    | t    | t
@@ -151,23 +153,23 @@
    (The case where all fields are null is indistinguishable
    from the composite as a whole being null.)
    Write <literal>NOT(composite IS NULL)</literal> instead.
-  <programlisting>
-   SELECT
+   <programlisting>
+    SELECT
      c,
      c IS NULL as "c IS N",
      NOT(c IS NULL) as "NOT c IS N",
      c IS NOT NULL as "c IS NOT N",
      ROW(value, value) IS NULL as "ROW(v,v) IS N",
      ROW(value, value) IS NOT NULL as "ROW(v,v) IS NOT N"
-   FROM null_examples AS c;
-  </programlisting>
-  <screen>
-      c   | c IS N | NOT c IS N | c IS NOT N | ROW(v,v) IS N | ROW(v,v) IS NOT N
-   -------+--------+------------+------------+---------------+-------------------
-    (1,1) | f      | t          | t          | f             | t
-    (2,)  | f      | t          | f          | t             | f
-    (3,4) | f      | t          | t          | f             | t
-  </screen>
+    FROM null_examples AS c;
+   </programlisting>
+   <screen>
+       c   | c IS N | NOT c IS N | c IS NOT N | ROW(v,v) IS N | ROW(v,v) IS NOT N
+    -------+--------+------------+------------+---------------+-------------------
+     (1,1) | f      | t          | t          | f             | t
+     (2,)  | f      | t          | f          | t             | f
+     (3,4) | f      | t          | t          | f             | t
+   </screen>
    See the <link linkend="nullvalues-multielement">multi-element
    testing section</link> below for an explanation.
   </para>
@@ -178,16 +180,16 @@
   <para>
    As a general expectation, operator invocation expressions where one of inputs
    is a null value will result in a null valued output.
-  <programlisting>
-   SELECT
-    1 + null as "Add",
-    'text' || null as "Concatenate";
-  </programlisting>
-  <screen>
-    Add | Concatenate
-   -----+-------------
-        |
-  </screen>
+   <programlisting>
+    SELECT
+     1 + null as "Add",
+     'text' || null as "Concatenate";
+   </programlisting>
+   <screen>
+     Add | Concatenate
+    -----+-------------
+         |
+   </screen> 
    Operators that behave otherwise should document their deviation from this norm.
   </para>
   <para>
@@ -201,8 +203,8 @@
      null IN (null, 2) as "N In N";
    </programlisting>
    <screen>
-    In Present | In Missing | N In Non-N | N In N
-   ------------+------------+------------+--------
+     In Present | In Missing | N In Non-N | N In N
+    ------------+------------+------------+--------
     t          |            |            |
    </screen>
    This is just an extension of the multi-element testing behavior described
@@ -225,8 +227,8 @@
     FROM null_examples;
    </programlisting>
    <screen>
-    id | value |  Affirm   |  Negate   | Safe Affirm | Safe Negate
-   ----+-------+-----------+-----------+-------------+-------------
+     id | value |  Affirm   |  Negate   | Safe Affirm | Safe Negate
+    ----+-------+-----------+-----------+-------------+-------------
      1 |     1 | Equal     | Equal     | Equal       | Equal
      2 |       | Not Equal | Equal     | Null        | Null
      3 |     4 | Not Equal | Not Equal | Not Equal   | Not Equal
@@ -436,8 +438,8 @@
      array[1]::integer[] || null::integer[] as "[] || null[]";
    </programlisting>
    <screen>
-    Lower | Left | || Text Op | concat Text Func | append([], null) | [] || null | [] || null[]
-   -------+------+------------+------------------+------------------+------------+--------------
+     Lower | Left | || Text Op | concat Text Func | append([], null) | [] || null | [] || null[]
+    -------+------+------------+------------------+------------------+------------+--------------
           |      |            | one              | {1,NULL}         | {1,NULL}   | {1}
    </screen>
    In short, please read the documentation for the functions you use if they may receive null inputs
@@ -465,8 +467,8 @@
     FROM null_examples;
    </programlisting>
    <screen>
-    Count | Count Value | Count Composite | Count Row
-   -------+-------------+-----------------+-----------
+     Count | Count Value | Count Composite | Count Row
+    -------+-------------+-----------------+-----------
         3 |           2 |               3 |         3
    </screen>
    Notice the "Count Row" outcome, though.  While we noted in the cardinal warning
@@ -617,33 +619,35 @@
    <literal>IS DISTINCT FROM</literal> rules being applied whereby all null
    values are equal to each other.  This setting applies to all columns in the index.
   </para>
-  <programlisting>
-   BEGIN;
-   CREATE UNIQUE INDEX value_nulls_distinct_implicit ON null_examples (value);
-   CREATE UNIQUE INDEX value_nulls_distinct_explicit ON null_examples (value) NULLS DISTINCT;
-   INSERT INTO null_examples VALUES (4, NULL);
-   ROLLBACK;
-  </programlisting>
-  <screen>
-   BEGIN
-   CREATE INDEX
-   CREATE INDEX
-   INSERT 0 1
-   ROLLBACK
-  </screen>
-    <programlisting>
-   BEGIN;
-   CREATE UNIQUE INDEX value_nulls_not_distinct_explicit ON null_examples (value) NULLS NOT DISTINCT;
-   INSERT INTO null_examples VALUES (4, NULL);
-   ROLLBACK;
-  </programlisting>
-  <screen>
-   BEGIN
-   CREATE INDEX
-   ERROR:  duplicate key value violates unique constraint "value_nulls_not_distinct_explicit"
-   DETAIL:  Key (value)=(null) already exists.
-   ROLLBACK
-  </screen>
+  <para>
+   <programlisting>
+    BEGIN;
+    CREATE UNIQUE INDEX value_nulls_distinct_implicit ON null_examples (value);
+    CREATE UNIQUE INDEX value_nulls_distinct_explicit ON null_examples (value) NULLS DISTINCT;
+    INSERT INTO null_examples VALUES (4, NULL);
+    ROLLBACK;
+   </programlisting>
+   <screen>
+    BEGIN
+    CREATE INDEX
+    CREATE INDEX
+    INSERT 0 1
+    ROLLBACK
+   </screen>
+   <programlisting>
+    BEGIN;
+    CREATE UNIQUE INDEX value_nulls_not_distinct_explicit ON null_examples (value) NULLS NOT DISTINCT;
+    INSERT INTO null_examples VALUES (4, NULL);
+    ROLLBACK;
+   </programlisting>
+   <screen>
+    BEGIN
+    CREATE INDEX
+    ERROR:  duplicate key value violates unique constraint "value_nulls_not_distinct_explicit"
+    DETAIL:  Key (value)=(null) already exists.
+    ROLLBACK
+   </screen>
+  </para>
   <para>
    For ordering, each column in the index gets its own specification of
    direction and null value placement similar to that found in the
