@@ -38,7 +38,7 @@
    A null value, like all values, must have a data type, and is valid for all data types.
   </para>
   <para>
-   A null value literal is written as unquoted, case insensitive, NULL.
+   A null value literal is written as unquoted, case-insensitive, NULL.
    Its type is the pseudo-type unknown but can be cast to any concrete data type.
    The <link linkend="sql-syntax-constants-generic"><literal>type 'string'</literal></link>
    syntax, however, will not work as there is no way to express
