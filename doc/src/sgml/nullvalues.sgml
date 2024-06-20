@@ -662,6 +662,21 @@
   </para>
  </sect2>
 
+ <sect2 id="nullvalues-partitionkeys">
+  <title>Null Values in Partiton Keys</title>
+  <para>
+   At present this is typically a non-issue as <productname>PostgreSQL</productname>
+   does not support a primary key that does not include partition key columns, and
+   all columns in a primary key are forced to be have not null constraints.
+  </para>
+  <para>
+   However, should you setup a situation where a partition key column can both: have a null value
+   and, nulls values in that key go to a specific partition, list-based routing will work as expected.
+   There is presently no way to direct rows having null values in partition keys away from the
+   default partition for range and hash partitioning.
+  </para>
+ </sect2>
+
  <sect2 id="nullvalues-settings">
   <title>Null Valued Settings</title>
   <para>
