@@ -1,5 +1,5 @@
 <sect1 id="nullvalues">
- <title>Null Values</title>
+ <title>Null Values Overview</title>
 
  <indexterm>
   <primary>null value</primary>
@@ -720,4 +720,74 @@
    </para>
  </sect2>
 
+ <sect2 id="nullvalues-json">
+  <title>Null Values in JSON</title>
+  <para>
+   As noted in <xref linkend="json-type-mapping-table"/>, JSON has a null value
+   the value does not get exposed at the SQL level.
+   <programlisting>
+    SELECT 'null'::json IS NULL AS "JSON null is NULL";
+   </programlisting>
+   <screen>
+     JSON null is NULL 
+    -------------------
+     f
+    (1 row)
+   </screen>
+   Additionally, the SQL operators and functions involving JSON key or array element selection,
+   or construction from literals, require that a number or text value be supplied as an operand
+   and so JSON null values cannot be targeted by those operators and functions.
+   <programlisting>
+    SELECT to_json(null::text);
+   </programlisting>
+   <screen>
+     to_json 
+    ---------
+     
+    (1 row)
+   </screen>
+   That all said, the system will convert from SQL null values to JSON null values when in a
+   composite type context.
+   <programlisting>
+    SELECT json_build_object('value', value) FROM null_examples;
+   </programlisting>
+   <screen>
+     json_build_object 
+    -------------------
+     {"value" : 1}
+     {"value" : null}
+     {"value" : 4}
+    (3 rows)
+   </screen>
+   And vice versa.
+   <programlisting>
+    SELECT * FROM jsonb_to_recordset('[{"value":1},{"value":null},{"value":4}]'::jsonb) AS jtr (value integer);
+   </programlisting>
+   <screen>
+     value 
+    -------
+         1
+          
+         4
+    (3 rows)
+   </screen>
+  </para>
+  <para>
+   A more versatile way to process JSON is to use jsonpath.  Within this context, as noted in
+   <xref linkend="functions-sqljson-filter-ex-table"/>, the JSON null value is considered equal
+   to other JSON null values.  However, while equaltiy works as expected, ordering is not implemented.
+   <programlisting>
+    SELECT 
+     jsonb_path_query_array('[1, 2, 3]', '$[*] ? (@ &gt; null)') AS "GT",
+     jsonb_path_query_array('[1, 2, 3]', '$[*] ? (@ &lt; null)') AS "LT",
+     jsonb_path_query_array('[1, 2, 3]', '$[*] ? (@ &lt;&gt; null)') AS "NE";
+   </programlisting>
+   <screen>
+     GT | LT |    NE     
+    ----+----+-----------
+     [] | [] | [1, 2, 3]
+    (1 row)
+   </screen>
+  </para>
+ </sect2>
 </sect1>
