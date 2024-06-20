@@ -318,7 +318,7 @@
    when the composite has a mix of null and non-null values.
   </para>
   <para>
-   Note that the rules above are applied to situation with a predicate or a scalar value
+   Note that the rules above are applied to situations where a predicate or a scalar value
    are being compared to a multi-element value.  The rules when two multi-element values are compared
    to each other are discussed <link linkend="nullvalues-multielementcomparison">next</link>.
    The two row constructor comparison case included above is also noted below.
