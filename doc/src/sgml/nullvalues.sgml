@@ -38,11 +38,9 @@
    A null value, like all values, must have a data type, and is valid for all data types.
   </para>
   <para>
-   A null value literal is written as unquoted, case-insensitive, NULL.
+   As noted in the <link linkend="sql-syntax-constants-nullvalue">synatx chapter</link>
+   a null value literal is written using the <literal>NULL</literal> keyword.
    Its type is the pseudo-type unknown but can be cast to any concrete data type.
-   The <link linkend="sql-syntax-constants-generic"><literal>type 'string'</literal></link>
-   syntax, however, will not work as there is no way to express
-   the <literal>NULL</literal> using single quotes.
   </para>
   <para>
    <programlisting>
@@ -107,8 +105,8 @@
     -------+--------+-------+--------+-------+--------
          |        |       |        | t     | f
    </screen>
-   However, as with many rules, there are exceptions
-   <link linkend="nullvalues-multielementcomparison">noted below</link>.  Specifically, when
+   However, as with many rules, there are exceptions, which are
+   <link linkend="nullvalues-multielementcomparison">noted below</link>.  Specifically,
    when the two compared values are part of a larger multi-element value.
    <programlisting>
      select array[1,2]=array[1,null];
@@ -121,7 +119,7 @@
     </screen>
   </para>
   <para>
-   Because of this SQL specification mandated rule checking for a null value has an
+   Because of this SQL specification mandated rule, checking for a null value has an
    explicit<literal>IS NULL</literal> test,
    and additionally there are distinctness tests
    (e.g., <literal>IS DISTINCT</literal>, and <literal>IS TRUE</literal>)
@@ -145,7 +143,7 @@
   </para>
   <para>
    There is also a cardinal warning: when dealing with
-   <link linkend="rowtypes">composite types</link>
+   <link linkend="rowtypes">composite types</link> in
    expressions; <literal>composite IS NULL</literal>
    and <literal>composite IS NOT NUll</literal>
    are not the opposites of each other in the case where some,
@@ -156,11 +154,11 @@
    <programlisting>
     SELECT
      c,
-     c IS NULL as "c IS N",
-     NOT(c IS NULL) as "NOT c IS N",
-     c IS NOT NULL as "c IS NOT N",
-     ROW(value, value) IS NULL as "ROW(v,v) IS N",
-     ROW(value, value) IS NOT NULL as "ROW(v,v) IS NOT N"
+     c IS NULL AS "c IS N",
+     NOT(c IS NULL) AS "NOT c IS N",
+     c IS NOT NULL AS "c IS NOT N",
+     ROW(value, value) IS NULL AS "ROW(v,v) IS N",
+     ROW(value, value) IS NOT NULL AS "ROW(v,v) IS NOT N"
     FROM null_examples AS c;
    </programlisting>
    <screen>
