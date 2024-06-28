@@ -24096,7 +24096,7 @@ WHERE EXISTS (SELECT 1 FROM tab2 WHERE col2 = tab1.col2);
 
   <para>
    If <replaceable>operator</replaceable> can produce null valued booleans then, as explained in
-   <xref linkend="nullvalues-composites"/>, the result cannot be <quote>true</quote> in the
+   <xref linkend="nullvalues-multielement"/>, the result cannot be <quote>true</quote> in the
    presence of null valued fields in either the row constructor or the subquery result row, as
    the individual field tests are AND'd together.
    Note that <literal>IS DISTINCT FROM</literal> is not an operator.
@@ -24328,6 +24328,11 @@ WHERE EXISTS (SELECT 1 FROM tab2 WHERE col2 = tab1.col2);
    considered.
   </para>
 
+  <para>
+   See <xref linkend="nullvalues-multielementcomparison-rowconstructor"/>
+   and surrounding content for additional details and examples.
+  </para>
+
 <synopsis>
 <replaceable>row_constructor</replaceable> IS DISTINCT FROM <replaceable>row_constructor</replaceable>
 </synopsis>
@@ -24363,7 +24368,7 @@ WHERE EXISTS (SELECT 1 FROM tab2 WHERE col2 = tab1.col2);
 
   <para>
    Each side is evaluated and they are compared row-wise.
-   As discussed in <xref linkend="nullvalues-multielementcomparison"/>,
+   As discussed and shown in <xref linkend="nullvalues-multielementcomparison-composite"/>,
    null values are treated as being equal to other null values and greater
    than all non-null values.
    Composite type
