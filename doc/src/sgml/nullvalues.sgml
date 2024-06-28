@@ -46,15 +46,16 @@
   <para>
    <programlisting>
    SELECT
-    NULL,
-    pg_typeof(null),
-    pg_typeof(NuLl::text),
-    cast(null as text);
+    NULL AS "Literal Null Value",
+    pg_typeof(null) AS "Type of Null",
+    pg_typeof(NuLl::text) AS "Type of Cast null",
+    cast(null as text) AS "Cast null value";
    </programlisting>
    <screen>
-   ?column? | pg_typeof | pg_typeof | text
-   ----------+-----------+-----------+------
-            | unknown   | text      |
+     Literal Null Value | Type of Null | Type of Cast null | Cast null value
+    --------------------+--------------+-------------------+-----------------
+                        | unknown      | text              |
+    (1 row)
    </screen>
   </para>
   <para>
@@ -93,24 +94,29 @@
    to any value, including other null values.
    <programlisting>
     SELECT
-    NULL = NULL as "N = N", NULL != NULL as "N != N",
-    1 = NULL as "1 = N", 1 != NULL as "1 != N",
-    1 = 1 as "1 = 1", 1 != 1 as "1 != 1";
+     NULL = NULL AS "N = N",
+     NULL != NULL AS "N != N",
+     1 = NULL AS "1 = N",
+     1 != NULL AS "1 != N",
+     1 = 1 AS "1 = 1",
+     1 != 1 AS "1 != 1";
    </programlisting>
    <screen>
      N = N | N != N | 1 = N | 1 != N | 1 = 1 | 1 != 1
     -------+--------+-------+--------+-------+--------
            |        |       |        | t     | f
+    (1 row)
    </screen>
    However, as with many rules, there are exceptions, which are
    <link linkend="nullvalues-multielementcomparison">noted below</link>.  Specifically,
    when the two compared values are part of a larger multi-element value.
    <programlisting>
-    select array[1,2]=array[1,null];
+    SELECT
+     array[1,2]=array[1,null] AS "Array Equals";
    </programlisting>
    <screen>
-     ?column?
-    ----------
+     Array Equals
+    --------------
      f
     (1 row)
    </screen>
@@ -124,17 +130,18 @@
    <xref linkend="functions-comparison-pred-table"/>
    <programlisting>
     SELECT id, value,
-     value IS NULL as "IS N",
-     value IS DISTINCT FROM id as "IS D",
-     value != id as "IS !="
+     value IS NULL AS "IS N",
+     value IS DISTINCT FROM id AS "IS D",
+     value != id AS "IS !="
     FROM null_examples;
    </programlisting>
    <screen>
      id | value | IS N | IS D | IS !=
     ----+-------+------+------+-------
-     1 |     1 | f    | f    | f
-     2 |       | t    | t    |
-     3 |     4 | f    | t    | t
+      1 |     1 | f    | f    | f
+      2 |       | t    | t    |
+      3 |     4 | f    | t    | t
+    (3 rows)
    </screen>
   </para>
   <para>
@@ -163,6 +170,7 @@
      (1,1) | f      | t          | t          | f             | t
      (2,)  | f      | t          | f          | t             | f
      (3,4) | f      | t          | t          | f             | t
+    (3 rows)
    </screen>
    See the <link linkend="nullvalues-multielement">multi-element
    testing section</link> below for an explanation.
@@ -170,20 +178,21 @@
  </sect2>
 
  <sect2 id="nullvalues-operands">
-  <title>Null Valued Operands</title>
+  <title>Null-Valued Operands</title>
   <para>
    As a general expectation, operator invocation expressions where one of inputs
-   is a null value will result in a null valued output.
+   is a null value will result in a null-valued output.
    <programlisting>
     SELECT
-     1 + null as "Add",
-     'text' || null as "Concatenate";
+     1 + null AS "Add",
+     'text' || null AS "Concatenate";
    </programlisting>
    <screen>
      Add | Concatenate
     -----+-------------
          |
-   </screen> 
+    (1 row)
+   </screen>
    Operators that behave otherwise should document their deviation from this norm.
   </para>
   <para>
@@ -191,15 +200,16 @@
    uses equality, not distinctness, for testing.
    <programlisting>
     SELECT
-     1 IN (1, null) as "In Present",
-     1 IN (2, null) as "In MIssing",
-     null IN (1, 2) as "N In Non-N",
-     null IN (null, 2) as "N In N";
+     1 IN (1, null) AS "In Present",
+     1 IN (2, null) AS "In MIssing",
+     null IN (1, 2) AS "N In Non-N",
+     null IN (null, 2) AS "N In N";
    </programlisting>
    <screen>
      In Present | In Missing | N In Non-N | N In N
     ------------+------------+------------+--------
      t          |            |            |
+    (1 row)
    </screen>
    This is just an extension of the multi-element testing behavior described
    <link linkend="nullvalues-multielement">below</link>.
@@ -210,14 +220,14 @@
    <literal>WHEN</literal> test will not consider a null value to be a match.
    <programlisting>
     SELECT id, value,
-     CASE WHEN id = value THEN 'Equal' ELSE 'Not Equal' END as "Affirm",
-     CASE WHEN id != value THEN 'Not Equal' ELSE 'Equal' END as "Negate",
+     CASE WHEN id = value THEN 'Equal' ELSE 'Not Equal' END AS "Affirm",
+     CASE WHEN id != value THEN 'Not Equal' ELSE 'Equal' END AS "Negate",
      CASE WHEN value IS NULL THEN 'Null'
           WHEN id = value THEN 'Equal'
-          ELSE 'Not Equal' END as "Safe Affirm",
+          ELSE 'Not Equal' END AS "Safe Affirm",
      CASE WHEN value IS NULL THEN 'Null'
           WHEN id != value THEN 'Not Equal'
-          ELSE 'Equal' END as "Safe Negate"
+          ELSE 'Equal' END AS "Safe Negate"
     FROM null_examples;
    </programlisting>
    <screen>
@@ -226,6 +236,7 @@
       1 |     1 | Equal     | Equal     | Equal       | Equal
       2 |       | Not Equal | Equal     | Null        | Null
       3 |     4 | Not Equal | Not Equal | Not Equal   | Not Equal
+    (3 rows)
    </screen>
   </para>
   <para>
@@ -234,15 +245,16 @@
    to determine the outcome.
    <programlisting>
     SELECT
-     true OR null as "T or N",
-     false OR null as "F or N",
-     true AND null  as "T and N",
-     false AND null  as "F and N";
+     true OR null AS "T or N",
+     false OR null AS "F or N",
+     true AND null AS "T and N",
+     false AND null AS "F and N";
    </programlisting>
    <screen>
      T or N | F or N | T and N | F and N
     --------+--------+---------+---------
      t      |        |         | f
+    (1 row)
    </screen>
   </para>
  </sect2>
@@ -250,7 +262,7 @@
  <sect2 id="nullvalues-domains">
   <title>Null Values in Domains</title>
   <para>
-   A domain is a user-defined data type that can have a <literal>NOT NULL</literal> constraint.   
+   A domain is a user-defined data type that can have a <literal>NOT NULL</literal> constraint.
    However, some usages of domains will cause the resultant column to have the domain type but
    the value will be null.  The common way this happens is by including the domain column's table
    on the right side of a left join.
@@ -269,7 +281,7 @@
     CREATE DOMAIN
     CREATE TABLE
     INSERT 0 2
-     id | value | de_id | de_value |   pg_typeof    
+     id | value | de_id | de_value |   pg_typeof
     ----+-------+-------+----------+----------------
       1 |     1 |     1 |        1 | domain_example
       2 |       |     2 |        2 | domain_example
@@ -353,30 +365,31 @@
     Applying the <literal>IS NOT NULL</literal> predicate to a composite value performs
     checks whether all fields of the composite have non-null values.  This is not the same
     as a non-null composite value.  Specifically, if the composite value has
-    a null valued field then both the <literal>IS NOT NULL</literal> predicate and the
+    a null-valued field then both the <literal>IS NOT NULL</literal> predicate and the
     <literal>IS NULL</literal> predicate will return false.
     <programlisting>
      SELECT
-      ROW(1,2) IS NULL as "Row Is Null",
-      ROW(1,2) IS NOT NULL as "Row Is Not Null",
-      ROW(1,NULL) IS NULL as "Row Is Null",
-      ROW(1,NULL) IS NOT NULL as "Row Is Not Null";
+      ROW(1,2) IS NULL AS "Row Is Null",
+      ROW(1,2) IS NOT NULL AS "Row Is Not Null",
+      ROW(1,NULL) IS NULL AS "Row Is Null",
+      ROW(1,NULL) IS NOT NULL AS "Row Is Not Null";
     </programlisting>
     <screen>
       Row Is Null | Row Is Not Null | Row Is Null | Row Is Not Null
      -------------+-----------------+-------------+-----------------
       f           | t               | f           | f
+     (1 row)
     </screen>
    </para>
    <para>
     Please read <xref linkend="composite-type-comparison"/> for a complete treatment
     on how <productname>PostgreSQL</productname> handles row-wise comparison.  The
     next two multi-element parts of this section discuss those comparisons in the
-    presence of null valued fields, and also in terms of the SQL specification.
+    presence of null-valued fields, and also in terms of the SQL specification.
    </para>
   </sect3>
   <sect3 id="nullvalues-multielementpredicates-arrays">
-   <title>Array Elements</title>
+   <title>Array Elements and IN Bag Members</title>
    <para>
     Examples of applying the behavior discussed in <xref linkend="nullvalues-multielement"/>
     to arrays, and <literal>IN</literal> and <literal>NOT IN</literal> bags, using the
@@ -406,22 +419,22 @@
       2 NOT IN (2, 2) AS "NotIN-NoNull-Negative";
     </programlisting>
     <screen>
-      Any-Null-Match | Any-NoNull-Match | ALL-Null-Match | All-NoNull-Match 
+      Any-Null-Match | Any-NoNull-Match | ALL-Null-Match | All-NoNull-Match
      ----------------+------------------+----------------+------------------
       t              | t                |                | t
      (1 row)
 
-      Any-Null-NoMatch | Any-NoNull-NoMatch | ALL-Null-NoMatch | All-NoNull-NoMatch 
+      Any-Null-NoMatch | Any-NoNull-NoMatch | ALL-Null-NoMatch | All-NoNull-NoMatch
      ------------------+--------------------+------------------+--------------------
                        | f                  | f                | f
      (1 row)
 
-      IN-Null-Positive | IN-NoNull-Positive | NotIN-Null-Positive | NotIN-NoNull-Positive 
+      IN-Null-Positive | IN-NoNull-Positive | NotIN-Null-Positive | NotIN-NoNull-Positive
      ------------------+--------------------+---------------------+-----------------------
       t                | t                  |                     | t
      (1 row)
 
-      IN-Null-Negative | IN-NoNull-Negative | NotIN-Null-Negative | NotIN-NoNull-Negative 
+      IN-Null-Negative | IN-NoNull-Negative | NotIN-Null-Negative | NotIN-NoNull-Negative
      ------------------+--------------------+---------------------+-----------------------
                        | f                  | f                   | f
      (1 row)
@@ -429,10 +442,15 @@
    </para>
   </sect3>
   <sect3 id="nullvalues-multielementpredicates-subqueries">
-   <title>Subqueries and IN bags</title>
+   <title>Single-Column Subquery Rows</title>
    <para>
     Examples of applying the behavior discussed in <xref linkend="nullvalues-multielement"/>
-    to subqueries using the operators defined in <xref linkend="functions-subquery"/>.
+    to subqueries using the operators defined in <xref linkend="functions-subquery"/>.  Note that
+    this section covers the multiple elements being checked are rows, each having one column.  If
+    the column itself is multi-element then the thing being searched for must be a compatible
+    multi-element value, and the corresponding comparison behavior described in
+    <xref linkend="nullvalues-multielementcomparison"/> will also be applied.
+
    </para>
    <para>
     <programlisting>
@@ -448,12 +466,12 @@
       2 = ALL(SELECT unnest(array[1, 1])) AS "All-NoNull-NoMatch";
     </programlisting>
     <screen>
-      Any-Null-Match | Any-NoNull-Match | ALL-Null-Match | All-NoNull-Match 
+      Any-Null-Match | Any-NoNull-Match | ALL-Null-Match | All-NoNull-Match
      ----------------+------------------+----------------+------------------
       t              | t                |                | t
      (1 row)
 
-      Any-Null-NoMatch | Any-NoNull-NoMatch | ALL-Null-NoMatch | All-NoNull-NoMatch 
+      Any-Null-NoMatch | Any-NoNull-NoMatch | ALL-Null-NoMatch | All-NoNull-NoMatch
      ------------------+--------------------+------------------+--------------------
                        | f                  | f                | f
      (1 row)
@@ -461,16 +479,16 @@
    </para>
   </sect3>
  </sect2>
- 
+
  <sect2 id="nullvalues-multielementcomparison">
   <title>Multi-Element Comparisons</title>
   <para>
-   The <link linkend="nullvalues-multielement">prior section</link> discussed applying
+   The <link linkend="nullvalues-multielementpredicates">prior section</link> discussed applying
    a predicate or a scalar value check element-wise across a multi-element value.
-   This section discusses
-   comparing two multi-element values to each other.  As both array and composite typed values
+   This section moves the discussion over to comparing two multi-element values to each other.
+   As both array and composite typed values
    can be stored within an index, and comparing two values in that context must not produce
-   a null valued result, considerations are made to adhere to the SQL specification where
+   a null-valued result, considerations are made to adhere to the SQL specification where
    possible while still making indexes, which the specification is silent on, functional.
    Specifically, except when comparing two row constructors, null values are considered
    equal to other null values and greater than all non-null values.
@@ -482,61 +500,73 @@
    the fact that row constructors are query literals, while composite typed values can be stored,
    brings about important differences in how they are treated.  Please read
    <xref linkend="composite-type-comparison"/> for a fuller treatment of this topic.  Here
-   we briefly recap the five different sitautions in the presence of null values.
+   we briefly recap the five different situations in the presence of null values.
   </para>
   <sect3 id="nullvalues-multielementcomparison-array">
    <title>Element-wise Comparisons</title>
    <para>
-    First,  null values within an array compare as equal to each other and greater than all
+    First situation, null values within an array compare as equal to each other and greater than all
     non-null values, regardless of whether the comparison involves
     <link linkend="sql-syntax-array-constructors">array constructors</link> or array typed values.
     <programlisting>
-     select array[1,2]=array[1,null], s, t, s = t, t &gt; s
-     from
-     (values (array[1,2])) sv (s),
-     (values (array[1,null::integer])) st (t);
+     SELECT
+      array[1,2]=array[1,null] AS "Constructors",
+      s, t,
+      s = t AS "Stored Equality",
+      t &gt; s AS "Stored Ordering"
+     FROM
+     (values (array[1,2])) AS sv (s),
+     (values (array[1,null::integer])) AS st (t);
     </programlisting>
     <screen>
-     ?column? |   s   |    t     | ?column? | ?column?
-    ----------+-------+----------+----------+----------
-     f        | {1,2} | {1,NULL} | f        | t
+      Constructors |   s   |    t     | Stored Equality | Stored Ordering
+     --------------+-------+----------+-----------------+-----------------
+      f            | {1,2} | {1,NULL} | f               | t
+     (1 row)
     </screen>
    </para>
   </sect3>
   <sect3 id="nullvalues-multielementcomparison-rowconstructor">
-   <title>Row-Wise Mutual Row Constructor Comparisons</title>
+   <title>Row-wise Mutual Row Constructor Comparisons</title>
    <para>
     In this situation null values produce unknown when compared to all values.
     <programlisting>
-     select (1,2)=(1,null), (1,null::integer)=(1,null);
+     SELECT
+      (1,2)=(1,null) AS "NonNull=Null",
+      (1,null::integer)=(1,null) AS "Null=Null";
     </programlisting>
     <screen>
-      ?column? | ?column?
-     ----------+----------
-               |
+      NonNull=Null | Null=Null
+     --------------+-----------
+                   |
      (1 row)
     </screen>
    </para>
   </sect3>
   <sect3 id="nullvalues-multielementcomparison-composite">
-   <title>Row-Wise Composite Involved Comparisons</title>
+   <title>Row-wise Composite Involved Comparisons</title>
    <para>
     In these three situations null values are considered equal to each other and greater than
     all non-null value.
    </para>
    <programlisting>
-    select s, t, s = t, t &lt; (1,2), t = (1,null::integer)
-    from (values ((1,2))) sv (s),
-         (values ((1,null::integer))) st (t);
+    SELECT s, t,
+     s = t AS "Stored Equals Stored",
+     t &lt; (1,2) AS "Stored LT Constructor",
+     t = (1,null::integer) AS "Stored Equals Constructor"
+    FROM
+     (values (1,2)) AS s,
+     (values (1,null::integer)) AS t;
    </programlisting>
    <screen>
-       s   |  t   | ?column? | ?column? | ?column?
-    -------+------+----------+----------+----------
-     (1,2) | (1,) | f        | f        | t
+       s   |  t   | Stored Equals Stored | Stored LT Constructor | Stored Equals Constructor
+    -------+------+----------------------+-----------------------+---------------------------
+     (1,2) | (1,) | f                    | f                     | t
+    (1 row)
    </screen>
   </sect3>
   <sect3 id="nullvalues-multielementcomparison-sqlconformance">
-   <title>SQL Conformance</title>
+   <title>SQL Specification Conformance</title>
    <para>
     The SQL specification requires row-wise comparison to return NULL if the
     result depends on comparing two NULL values or a NULL and a non-NULL.
@@ -549,12 +579,12 @@
  </sect2>
 
  <sect2 id="nullvalues-functions">
-  <title>Null Valued Arguments in Normal Function Calls</title>
+  <title>Null-Valued Arguments in Normal Function Calls</title>
   <para>
    <link linkend="sql-createfunction">Function specifications</link>
-   have a "strictness" attribute that, when set to "strict"
-   (a.k.a. "null on null input") will tell the executor to return a null value for any
-   function call having at least one null valued input, without executing the
+   have a "strictness" attribute (<literal>pg_proc.proisstrict</literal>) that,
+   when set to "strict" (true) will tell the executor to return a null value for any
+   function call having at least one null-valued input, without executing the
    function.
   </para>
   <para>
@@ -566,28 +596,29 @@
    like for concatenating text, but not always, like concatenating an element onto an array.
    <programlisting>
     SELECT
-     lower(null::text) as "Lower",
-     left('text', null) as "Left",
-     'one' || null as "|| Text Op",
-     concat('one', null) as "concat Text Func",
-     array_append(array[1], null) as "append([], null)",
-     array[1]::integer[] || null::integer as "[] || null",
-     array[1]::integer[] || null::integer[] as "[] || null[]";
+     lower(null::text) AS "Lower",
+     left('text', null) AS "Left",
+     'one' || null AS "|| Text Op",
+     concat('one', null) AS "concat Text Func",
+     array_append(array[1], null) AS "append([], null)",
+     array[1]::integer[] || null::integer AS "[] || null",
+     array[1]::integer[] || null::integer[] AS "[] || null[]";
    </programlisting>
    <screen>
      Lower | Left | || Text Op | concat Text Func | append([], null) | [] || null | [] || null[]
     -------+------+------------+------------------+------------------+------------+--------------
-          |      |            | one              | {1,NULL}         | {1,NULL}   | {1}
+           |      |            | one              | {1,NULL}         | {1,NULL}   | {1}
+    (1 row)
    </screen>
    In short, please read the documentation for the functions you use if they may receive null inputs
    to understand how they will behave.  Send a documentation comment pointing out any functions
-   that do not behave strictly but whose actual behavior in the presence of null valued input
+   that do not behave strictly but whose actual behavior in the presence of null-valued input
    is not described or readily inferred.
   </para>
  </sect2>
 
  <sect2 id="nullvalues-aggregates">
-  <title>Null Valued Arguments in Aggregate and Window Processing</title>
+  <title>Null-Valued Arguments in Aggregate and Window Functions</title>
   <para>
    When executing an aggregate or window function the state tracking
    component will remain unchanged even if the underlying processing
@@ -597,37 +628,50 @@
    as demonstrated in <literal>count(value)</literal> below.
    <programlisting>
     SELECT
-     count(*) as "Count",
-     count(value) as "Count Value",
-     count(null_examples) as "Count Composite",
-     count(row(value, value)) as "Count Row"
+     count(*) AS "Count",
+     count(value) AS "Count Value",
+     count(null_examples) AS "Count Composite",
+     count(row(value, value)) AS "Count Row"
     FROM null_examples;
    </programlisting>
    <screen>
      Count | Count Value | Count Composite | Count Row
     -------+-------------+-----------------+-----------
-        3 |           2 |               3 |         3
+         3 |           2 |               3 |         3
+    (1 row)
    </screen>
    Notice the "Count Row" outcome, though.  While we noted in the cardinal warning
    that a composite whose fields are all null values is indistinguishable from
    a null value of composite type, the count aggregate does indeed distinguish them,
    recognizing and counting the non-null composite value produced by the
    <link linkend="sql-syntax-row-constructors">row constructor</link>
-   <literal>count(row(value, value))</literal>.
+   <literal>row(null, null)</literal>.
   </para>
  </sect2>
 
- <sect2 id="nullvalues-filters">
-  <title>Null Values in Filters</title>
+ <sect2 id="nullvalues-where">
+  <title>Null Values in Where</title>
   <para>
    A <literal>WHERE</literal> clause that evaluates to a null value for a given row will exclude that row.
    <programlisting>
-    SELECT id, value FROM null_examples WHERE value = 1;
+    SELECT id, value AS "Equals 1"
+    FROM null_examples
+    WHERE value = 1;
+
+    SELECT id, value AS "Not Equal to 1"
+    FROM null_examples
+    WHERE value != 1;
    </programlisting>
    <screen>
-     id | value
-    ----+-------
-      1 |     1
+     id | Equals 1
+    ----+----------
+      1 |        1
+    (1 row)
+
+     id | Not Equal to 1
+    ----+----------------
+      3 |              4
+    (1 row)
    </screen>
   </para>
  </sect2>
@@ -635,10 +679,10 @@
  <sect2 id="nullvalues-table-constraints">
   <title>Null Values in Table Constraints</title>
   <para>
-   It is possible to define validation expressions
-   (<link linkend="ddl-constraints-check-constraints">check constraints</link>)
-   on tables that ensure only values passing those expressions are inserted.  While
-   this seems like it would behave the same as a filter, the choice here,
+   It is possible to define 
+   <link linkend="ddl-constraints-check-constraints">check constraint</link>
+   expressions on tables to ensure only values passing those expressions are inserted.
+   While this seems like it would behave the same as a where clause, the choice here,
    when an expression evaulates to a null value, is to allow the row to be inserted
    - the same as a true result.
    <programlisting>
@@ -661,8 +705,7 @@
     ALTER TABLE
     ROLLBACK
    </screen>
-   We are using a <link linkend="tutorial-transactions">transaction</link>
-   (begin and rollback) and the alter table command to add two
+   We are using a transaction (begin and rollback) and the alter table command to add two
    constraints to our null_examples table.  The first constraint prohibits rows with a value
    of 1, which our row with an id of 1 violates.  Prohibiting the value 10 definitely allows
    rows with ids 1 and 3 to exist, and since we are not told that some row violates our
@@ -687,7 +730,7 @@
     WITH vals (value) AS (VALUES (1), (NULL), (1), (2), (NULL))
     SELECT
      value,
-     count(*) as "Count"
+     count(*) AS "Count"
     FROM vals
     GROUP BY value
     ORDER BY value;
@@ -698,10 +741,12 @@
          1 |     2
          2 |     1
            |     2
+    (3 rows)
    </screen>
    <programlisting>
     WITH vals (value) AS (VALUES (1), (NULL), (1), (2), (NULL))
-    SELECT DISTINCT value FROM vals
+    SELECT DISTINCT value
+    FROM vals
     ORDER BY value NULLS FIRST;
    </programlisting>
    <screen>
@@ -710,6 +755,7 @@
 
          1
          2
+    (3 rows)
    </screen>
   </para>
  </sect2>
@@ -735,13 +781,14 @@
          2
          1
          1
+    (5 rows)
    </screen>
   </para>
   <para>
    Note that when dealing with multi-element values the comparison behavior
    <link linkend="nullvalues-multielementcomparison">described above</link> applies,
    if the comparison determination rests upon comparing a null value to a non-null value
-   the multi-element value with the null valued component will sort greater than the one
+   the multi-element value with the null-valued component will sort greater than the one
    with a non-null component.
   </para>
  </sect2>
@@ -794,7 +841,7 @@
    Note that when dealing with multi-element values the comparison behavior
    <link linkend="nullvalues-multielementcomparison">described above</link> applies,
    if the comparison determination rests upon comparing a null value to a non-null value
-   the multi-element value with the null valued component will sort greater than the one
+   the multi-element value with the null-valued component will sort greater than the one
    with a non-null component.
   </para>
  </sect2>
@@ -808,14 +855,14 @@
   </para>
   <para>
    However, should you setup a situation where a partition key column can both: have a null value
-   and, nulls values in that key go to a specific partition, list-based routing will work as expected.
+   and, null values in that key go to a specific partition, list-based routing will work as expected.
    There is presently no way to direct rows having null values in partition keys away from the
    default partition for range and hash partitioning.
   </para>
  </sect2>
 
  <sect2 id="nullvalues-settings">
-  <title>Null Valued Settings</title>
+  <title>Null-Valued Settings</title>
   <para>
    There are none.  During initializion all settings are assigned a non-null value.
   </para>
@@ -876,12 +923,12 @@
   <title>Null Values in JSON</title>
   <para>
    As noted in <xref linkend="json-type-mapping-table"/>, JSON has a null value
-   the value does not get exposed at the SQL level.
+   that does not get exposed at the SQL level.
    <programlisting>
     SELECT 'null'::json IS NULL AS "JSON null is NULL";
    </programlisting>
    <screen>
-     JSON null is NULL 
+     JSON null is NULL
     -------------------
      f
     (1 row)
@@ -893,18 +940,19 @@
     SELECT to_json(null::text);
    </programlisting>
    <screen>
-     to_json 
+     to_json
     ---------
-     
+
     (1 row)
    </screen>
    That all said, the system will convert from SQL null values to JSON null values when in a
    composite type context.
    <programlisting>
-    SELECT json_build_object('value', value) FROM null_examples;
+    SELECT json_build_object('value', value)
+    FROM null_examples;
    </programlisting>
    <screen>
-     json_build_object 
+     json_build_object
     -------------------
      {"value" : 1}
      {"value" : null}
@@ -913,13 +961,14 @@
    </screen>
    And vice versa.
    <programlisting>
-    SELECT * FROM jsonb_to_recordset('[{"value":1},{"value":null},{"value":4}]'::jsonb) AS jtr (value integer);
+    SELECT *
+    FROM jsonb_to_recordset('[{"value":1},{"value":null},{"value":4}]'::jsonb) AS jtr (value integer);
    </programlisting>
    <screen>
-     value 
+     value
     -------
          1
-          
+
          4
     (3 rows)
    </screen>
@@ -929,13 +978,13 @@
    <xref linkend="functions-sqljson-filter-ex-table"/>, the JSON null value is considered equal
    to other JSON null values.  However, while equaltiy works as expected, ordering is not implemented.
    <programlisting>
-    SELECT 
+    SELECT
      jsonb_path_query_array('[1, 2, 3]', '$[*] ? (@ &gt; null)') AS "GT",
      jsonb_path_query_array('[1, 2, 3]', '$[*] ? (@ &lt; null)') AS "LT",
      jsonb_path_query_array('[1, 2, 3]', '$[*] ? (@ &lt;&gt; null)') AS "NE";
    </programlisting>
    <screen>
-     GT | LT |    NE     
+     GT | LT |    NE
     ----+----+-----------
      [] | [] | [1, 2, 3]
     (1 row)
