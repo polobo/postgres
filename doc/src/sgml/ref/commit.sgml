@@ -33,6 +33,19 @@ COMMIT [ WORK | TRANSACTION ] [ AND [ NO ] CHAIN ]
    changes made by the transaction become visible to others
    and are guaranteed to be durable if a crash occurs.
   </para>
+  <para>
+   If the transaction is in an aborted state then no changes will be made
+   and the effect of the <command>COMMIT</command> will be identical to that
+   of <command>ROLLBACK</command>, including the command tag output.
+  </para>
+  <para>
+   In either situation, if the <literal>AND CHAIN</literal> parameter is
+   specified a new, identically configured, transaction is started.
+  </para>
+  <para>
+   For more information regarding transactions see
+   <xref linkend="tutorial-transactions"/>.
+  </para>
  </refsect1>
 
  <refsect1>
@@ -65,6 +78,25 @@ COMMIT [ WORK | TRANSACTION ] [ AND [ NO ] CHAIN ]
     </listitem>
    </varlistentry>
   </variablelist>
+ </refsect1>
+
+ <refsect1>
+  <title>Outputs</title>
+
+  <para>
+   On successful completion on a non-aborted transaction, a <command>COMMIT</command>
+   command returns a command tag of the form
+<screen>
+COMMIT
+</screen>
+  </para>
+  <para>
+   However, on an aborted transaction, a <command>COMMIT</command>
+   command returns a command tag of the form
+<screen>
+ROLLBACK
+</screen>
+  </para>
  </refsect1>
 
  <refsect1>
@@ -107,6 +139,7 @@ COMMIT;
   <simplelist type="inline">
    <member><xref linkend="sql-begin"/></member>
    <member><xref linkend="sql-rollback"/></member>
+   <member><xref linkend="tutorial-transactions"/></member>
   </simplelist>
  </refsect1>
 </refentry>
