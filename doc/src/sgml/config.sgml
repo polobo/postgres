@@ -23,7 +23,7 @@
 
     <para>
      All parameter names are case-insensitive. Every parameter takes a
-     value of one of five types: boolean, string, integer, floating point,
+     non-null value of one of five types: boolean, string, integer, floating point,
      or enumerated (enum).  The type determines the syntax for setting the
      parameter:
     </para>
@@ -11997,14 +11997,20 @@ dynamic_library_path = '/usr/local/lib/postgresql:$libdir'
     <para>
      Because custom options may need to be set in processes that have not
      loaded the relevant extension module, <productname>PostgreSQL</productname>
-     will accept a setting for any two-part parameter name.  Such variables
-     are treated as placeholders and have no function until the module that
-     defines them is loaded. When an extension module is loaded, it will add
+     will accept a setting for any two-part parameter name.
+     When an extension module is loaded, it will add
      its variable definitions and convert any placeholder values according to
      those definitions.  If there are any unrecognized placeholders
      that begin with its extension name, warnings are issued and those
      placeholders are removed.
     </para>
+
+    <para>
+     If a placeholder is created in a session it will exist for the
+     lifetime of the session unless removed by an extension.
+     Placeholders have a string data type with a reset value of the empty string.
+    </para>
+
    </sect1>
 
    <sect1 id="runtime-config-developer">

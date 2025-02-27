@@ -28446,7 +28446,7 @@ acl      | {postgres=arwdDxtm/postgres,foo=r/postgres}
         <returnvalue>text</returnvalue>
        </para>
        <para>
-        Returns the current value of the
+        Returns the current non-null value of the
         setting <parameter>setting_name</parameter>.  If there is no such
         setting, <function>current_setting</function> throws an error
         unless <parameter>missing_ok</parameter> is supplied and
@@ -28479,6 +28479,17 @@ acl      | {postgres=arwdDxtm/postgres,foo=r/postgres}
         new value to apply for the rest of the current session,
         use <literal>false</literal> instead. This function corresponds to
         the SQL command <xref linkend="sql-set"/>.
+       </para>
+       <para>
+        <function>set_config</function> accepts the NULL value for
+        <parameter>new_value</parameter>, but as settings cannot be null this input
+        is interpreted as a request to set the setting to its default value.
+       </para>
+       <para>
+        If <parameter>setting_name</parameter> does not already exist
+        <function>set_config</function> throws an error unless the identifier is a valid
+        <link linkend="runtime-config-custom">custom option</link> name, in which it
+        creates a placeholder with the empty string as its old value.
        </para>
        <para>
         <literal>set_config('log_statement_stats', 'off', false)</literal>
