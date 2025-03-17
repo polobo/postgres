@@ -772,7 +772,7 @@ FROM null_examples;
    A <literal>WHERE</literal> clause that evaluates to a null value for a given row will exclude that row.
    Note below that, due to tri-valued logic described in <xref linkend="nullvalues-cardinalrule"/>,
    the row with an id of 2 is not included in either of the first two results.  The third result, using
-   <literal>IS NULL</literal>, finds that row.
+   <literal>IS DISTINCT FROM</literal>, finds that row and the original with an id of 3.
 <programlisting>
 SELECT id, value AS "Equals 1"
 FROM null_examples
@@ -782,9 +782,9 @@ SELECT id, value AS "Not Equal to 1"
 FROM null_examples
 WHERE value != 1;
 
-SELECT id, value AS "IS NULL"
+SELECT id, value AS "DISTINCT FROM 1"
 FROM null_examples
-WHERE value IS NULL;
+WHERE value IS DISTINCT FROM 1;
 </programlisting>
 <screen>
  id | Equals 1
@@ -795,9 +795,10 @@ WHERE value IS NULL;
 ----+----------------
   3 |              4
 
- id | IS NULL
-----+---------
-  2 |      \N
+ id | DISTINCT FROM 1
+----+-----------------
+  2 |              \N
+  3 |               4
 </screen>
   </para>
  </sect2>
