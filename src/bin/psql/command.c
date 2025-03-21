@@ -2688,6 +2688,7 @@ exec_command_pset(PsqlScanState scan_state, bool active_branch)
 				"border", "columns", "csv_fieldsep", "expanded", "fieldsep",
 				"fieldsep_zero", "footer", "format", "linestyle", "null",
 				"numericlocale", "pager", "pager_min_lines",
+				"display_true", "display_false",
 				"recordsep", "recordsep_zero",
 				"tableattr", "title", "tuples_only",
 				"unicode_border_linestyle",
@@ -5193,6 +5194,26 @@ do_pset(const char *param, const char *value, printQueryOpt *popt, bool quiet)
 		}
 	}
 
+	/* true display */
+	else if (strcmp(param, "display_true") == 0)
+	{
+		if (value)
+		{
+			free(popt->truePrint);
+			popt->truePrint = pg_strdup(value);
+		}
+	}
+
+	/* false display */
+	else if (strcmp(param, "display_false") == 0)
+	{
+		if (value)
+		{
+			free(popt->falsePrint);
+			popt->falsePrint = pg_strdup(value);
+		}
+	}
+
 	/* field separator for unaligned text */
 	else if (strcmp(param, "fieldsep") == 0)
 	{
@@ -5409,6 +5430,20 @@ printPsetInfo(const char *param, printQueryOpt *popt)
 	{
 		printf(_("Null display is \"%s\".\n"),
 			   popt->nullPrint ? popt->nullPrint : "");
+	}
+
+	/* show boolean true display */
+	else if (strcmp(param, "display_true") == 0)
+	{
+		printf(_("Boolean true display is \"%s\".\n"),
+				popt->truePrint ? popt->truePrint : "t");
+	}
+
+	/* show boolean false display */
+	else if (strcmp(param, "display_false") == 0)
+	{
+		printf(_("Boolean false display is \"%s\".\n"),
+			   popt->falsePrint ? popt->falsePrint : "f");
 	}
 
 	/* show locale-aware numeric output */
@@ -5656,6 +5691,14 @@ pset_value_string(const char *param, printQueryOpt *popt)
 		return pset_quoted_string(popt->nullPrint
 								  ? popt->nullPrint
 								  : "");
+	else if (strcmp(param, "display_true") == 0)
+		return pset_quoted_string(popt->truePrint
+								? popt->truePrint
+								: "t");
+	else if (strcmp(param, "display_false") == 0)
+		return pset_quoted_string(popt->falsePrint
+								  ? popt->falsePrint
+								  : "f");
 	else if (strcmp(param, "numericlocale") == 0)
 		return pstrdup(pset_bool_string(popt->topt.numericLocale));
 	else if (strcmp(param, "pager") == 0)
