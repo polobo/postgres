@@ -32,10 +32,12 @@
 #include "parser/parse_coerce.h"
 #include "parser/parse_collate.h"
 #include "parser/parse_expr.h"
+#include "parser/parse_func.h"
 #include "parser/parse_relation.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
 #include "utils/lsyscache.h"
+#include "utils/regproc.h"
 #include "utils/rel.h"
 #include "utils/rls.h"
 
@@ -531,10 +533,31 @@ ProcessCopyOptions(ParseState *pstate,
 			else if (strcmp(fmt, "binary") == 0)
 				opts_out->binary = true;
 			else
-				ereport(ERROR,
-						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-						 errmsg("COPY format \"%s\" not recognized", fmt),
-						 parser_errposition(pstate, defel->location)));
+			{
+				List	   *qualified_format;
+				Oid			arg_types[1];
+				Oid			handler = InvalidOid;
+
+				qualified_format = stringToQualifiedNameList(fmt, NULL);
+				arg_types[0] = INTERNALOID;
+				handler = LookupFuncName(qualified_format, 1,
+										 arg_types, true);
+				if (!OidIsValid(handler))
+					ereport(ERROR,
+							(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+							 errmsg("COPY format \"%s\" not recognized", fmt),
+							 parser_errposition(pstate, defel->location)));
+
+				/* check that handler has correct return type */
+				if (get_func_rettype(handler) != COPY_HANDLEROID)
+					ereport(ERROR,
+							(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+							 errmsg("function %s must return type %s",
+									fmt, "copy_handler"),
+							 parser_errposition(pstate, defel->location)));
+
+				opts_out->handler = handler;
+			}
 		}
 		else if (strcmp(defel->defname, "freeze") == 0)
 		{

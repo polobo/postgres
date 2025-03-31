@@ -87,9 +87,10 @@ typedef struct CopyFormatOptions
 	CopyLogVerbosityChoice log_verbosity;	/* verbosity of logged messages */
 	int64		reject_limit;	/* maximum tolerable number of errors */
 	List	   *convert_select; /* list of column names (can be NIL) */
+	Oid			handler;		/* handler function for custom format routine */
 } CopyFormatOptions;
 
-/* These are private in commands/copy[from|to].c */
+/* These are private in commands/copy[from|to]_internal.h */
 typedef struct CopyFromStateData *CopyFromState;
 typedef struct CopyToStateData *CopyToState;
 

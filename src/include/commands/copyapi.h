@@ -22,6 +22,8 @@
  */
 typedef struct CopyToRoutine
 {
+	NodeTag		type;
+
 	/*
 	 * Set output function information. This callback is called once at the
 	 * beginning of COPY TO.
@@ -60,6 +62,8 @@ typedef struct CopyToRoutine
  */
 typedef struct CopyFromRoutine
 {
+	NodeTag		type;
+
 	/*
 	 * Set input function information. This callback is called once at the
 	 * beginning of COPY FROM.

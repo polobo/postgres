@@ -37,56 +37,6 @@
 #include "utils/rel.h"
 #include "utils/snapmgr.h"
 
-/*
- * This struct contains all the state variables used throughout a COPY TO
- * operation.
- *
- * Multi-byte encodings: all supported client-side encodings encode multi-byte
- * characters by having the first byte's high bit set. Subsequent bytes of the
- * character can have the high bit not set. When scanning data in such an
- * encoding to look for a match to a single-byte (ie ASCII) character, we must
- * use the full pg_encoding_mblen() machinery to skip over multibyte
- * characters, else we might find a false match to a trailing byte. In
- * supported server encodings, there is no possibility of a false match, and
- * it's faster to make useless comparisons to trailing bytes than it is to
- * invoke pg_encoding_mblen() to skip over them. encoding_embeds_ascii is true
- * when we have to do it the hard way.
- */
-typedef struct CopyToStateData
-{
-	/* format-specific routines */
-	const CopyToRoutine *routine;
-
-	/* low-level state data */
-	CopyDest	copy_dest;		/* type of copy source/destination */
-	FILE	   *copy_file;		/* used if copy_dest == COPY_FILE */
-	StringInfo	fe_msgbuf;		/* used for all dests during COPY TO */
-
-	int			file_encoding;	/* file or remote side's character encoding */
-	bool		need_transcoding;	/* file encoding diff from server? */
-	bool		encoding_embeds_ascii;	/* ASCII can be non-first byte? */
-
-	/* parameters from the COPY command */
-	Relation	rel;			/* relation to copy to */
-	QueryDesc  *queryDesc;		/* executable query to copy from */
-	List	   *attnumlist;		/* integer list of attnums to copy */
-	char	   *filename;		/* filename, or NULL for STDOUT */
-	bool		is_program;		/* is 'filename' a program to popen? */
-	copy_data_dest_cb data_dest_cb; /* function for writing data */
-
-	CopyFormatOptions opts;
-	Node	   *whereClause;	/* WHERE condition (or NULL) */
-
-	/*
-	 * Working state
-	 */
-	MemoryContext copycontext;	/* per-copy execution context */
-
-	FmgrInfo   *out_functions;	/* lookup info for output functions */
-	MemoryContext rowcontext;	/* per-row evaluation context */
-	uint64		bytes_processed;	/* number of bytes processed so far */
-} CopyToStateData;
-
 /* DestReceiver for COPY (query) TO */
 typedef struct
 {
@@ -140,6 +90,7 @@ static void CopySendInt16(CopyToState cstate, int16 val);
 
 /* text format */
 static const CopyToRoutine CopyToRoutineText = {
+	.type = T_CopyToRoutine,
 	.CopyToStart = CopyToTextLikeStart,
 	.CopyToOutFunc = CopyToTextLikeOutFunc,
 	.CopyToOneRow = CopyToTextOneRow,
@@ -148,6 +99,7 @@ static const CopyToRoutine CopyToRoutineText = {
 
 /* CSV format */
 static const CopyToRoutine CopyToRoutineCSV = {
+	.type = T_CopyToRoutine,
 	.CopyToStart = CopyToTextLikeStart,
 	.CopyToOutFunc = CopyToTextLikeOutFunc,
 	.CopyToOneRow = CopyToCSVOneRow,
@@ -156,6 +108,7 @@ static const CopyToRoutine CopyToRoutineCSV = {
 
 /* binary format */
 static const CopyToRoutine CopyToRoutineBinary = {
+	.type = T_CopyToRoutine,
 	.CopyToStart = CopyToBinaryStart,
 	.CopyToOutFunc = CopyToBinaryOutFunc,
 	.CopyToOneRow = CopyToBinaryOneRow,
@@ -166,7 +119,22 @@ static const CopyToRoutine CopyToRoutineBinary = {
 static const CopyToRoutine *
 CopyToGetRoutine(const CopyFormatOptions *opts)
 {
-	if (opts->csv_mode)
+	if (OidIsValid(opts->handler))
+	{
+		Datum		datum;
+		Node	   *routine;
+
+		datum = OidFunctionCall1(opts->handler, BoolGetDatum(false));
+		routine = (Node *) DatumGetPointer(datum);
+		if (routine == NULL || !IsA(routine, CopyToRoutine))
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("COPY handler function %s.%s did not return CopyToRoutine struct",
+							get_namespace_name(get_func_namespace(opts->handler)),
+							get_func_name(opts->handler))));
+		return castNode(CopyToRoutine, routine);
+	}
+	else if (opts->csv_mode)
 		return &CopyToRoutineCSV;
 	else if (opts->binary)
 		return &CopyToRoutineBinary;

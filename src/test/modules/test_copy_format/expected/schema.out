@@ -1,0 +1,56 @@
+CREATE SCHEMA test_schema;
+CREATE EXTENSION test_copy_format WITH SCHEMA test_schema;
+CREATE TABLE public.test (a smallint, b integer, c bigint);
+INSERT INTO public.test VALUES (1, 2, 3), (12, 34, 56), (123, 456, 789);
+-- Qualified name
+COPY public.test FROM stdin WITH (FORMAT 'test_schema.test_copy_format');
+NOTICE:  test_copy_format: is_from=true
+NOTICE:  CopyFromInFunc: attribute: smallint
+NOTICE:  CopyFromInFunc: attribute: integer
+NOTICE:  CopyFromInFunc: attribute: bigint
+NOTICE:  CopyFromStart: the number of attributes: 3
+NOTICE:  CopyFromOneRow
+NOTICE:  CopyFromEnd
+COPY public.test TO stdout WITH (FORMAT 'test_schema.test_copy_format');
+NOTICE:  test_copy_format: is_from=false
+NOTICE:  CopyToOutFunc: attribute: smallint
+NOTICE:  CopyToOutFunc: attribute: integer
+NOTICE:  CopyToOutFunc: attribute: bigint
+NOTICE:  CopyToStart: the number of attributes: 3
+NOTICE:  CopyToOneRow: the number of valid values: 3
+NOTICE:  CopyToOneRow: the number of valid values: 3
+NOTICE:  CopyToOneRow: the number of valid values: 3
+NOTICE:  CopyToEnd
+-- No schema, no search path
+COPY public.test FROM stdin WITH (FORMAT 'test_copy_format');
+ERROR:  COPY format "test_copy_format" not recognized
+LINE 1: COPY public.test FROM stdin WITH (FORMAT 'test_copy_format')...
+                                          ^
+COPY public.test TO stdout WITH (FORMAT 'test_copy_format');
+ERROR:  COPY format "test_copy_format" not recognized
+LINE 1: COPY public.test TO stdout WITH (FORMAT 'test_copy_format');
+                                         ^
+-- No schema, with search path
+SET search_path = test_schema,public;
+COPY public.test FROM stdin WITH (FORMAT 'test_copy_format');
+NOTICE:  test_copy_format: is_from=true
+NOTICE:  CopyFromInFunc: attribute: smallint
+NOTICE:  CopyFromInFunc: attribute: integer
+NOTICE:  CopyFromInFunc: attribute: bigint
+NOTICE:  CopyFromStart: the number of attributes: 3
+NOTICE:  CopyFromOneRow
+NOTICE:  CopyFromEnd
+COPY public.test TO stdout WITH (FORMAT 'test_copy_format');
+NOTICE:  test_copy_format: is_from=false
+NOTICE:  CopyToOutFunc: attribute: smallint
+NOTICE:  CopyToOutFunc: attribute: integer
+NOTICE:  CopyToOutFunc: attribute: bigint
+NOTICE:  CopyToStart: the number of attributes: 3
+NOTICE:  CopyToOneRow: the number of valid values: 3
+NOTICE:  CopyToOneRow: the number of valid values: 3
+NOTICE:  CopyToOneRow: the number of valid values: 3
+NOTICE:  CopyToEnd
+RESET search_path;
+DROP TABLE public.test;
+DROP EXTENSION test_copy_format;
+DROP SCHEMA test_schema;

@@ -129,6 +129,7 @@ static void CopyFromBinaryEnd(CopyFromState cstate);
 
 /* text format */
 static const CopyFromRoutine CopyFromRoutineText = {
+	.type = T_CopyFromRoutine,
 	.CopyFromInFunc = CopyFromTextLikeInFunc,
 	.CopyFromStart = CopyFromTextLikeStart,
 	.CopyFromOneRow = CopyFromTextOneRow,
@@ -137,6 +138,7 @@ static const CopyFromRoutine CopyFromRoutineText = {
 
 /* CSV format */
 static const CopyFromRoutine CopyFromRoutineCSV = {
+	.type = T_CopyFromRoutine,
 	.CopyFromInFunc = CopyFromTextLikeInFunc,
 	.CopyFromStart = CopyFromTextLikeStart,
 	.CopyFromOneRow = CopyFromCSVOneRow,
@@ -145,6 +147,7 @@ static const CopyFromRoutine CopyFromRoutineCSV = {
 
 /* binary format */
 static const CopyFromRoutine CopyFromRoutineBinary = {
+	.type = T_CopyFromRoutine,
 	.CopyFromInFunc = CopyFromBinaryInFunc,
 	.CopyFromStart = CopyFromBinaryStart,
 	.CopyFromOneRow = CopyFromBinaryOneRow,
@@ -155,7 +158,22 @@ static const CopyFromRoutine CopyFromRoutineBinary = {
 static const CopyFromRoutine *
 CopyFromGetRoutine(const CopyFormatOptions *opts)
 {
-	if (opts->csv_mode)
+	if (OidIsValid(opts->handler))
+	{
+		Datum		datum;
+		Node	   *routine;
+
+		datum = OidFunctionCall1(opts->handler, BoolGetDatum(true));
+		routine = (Node *) DatumGetPointer(datum);
+		if (routine == NULL || !IsA(routine, CopyFromRoutine))
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("COPY handler function %s.%s did not return CopyFromRoutine struct",
+							get_namespace_name(get_func_namespace(opts->handler)),
+							get_func_name(opts->handler))));
+		return castNode(CopyFromRoutine, routine);
+	}
+	else if (opts->csv_mode)
 		return &CopyFromRoutineCSV;
 	else if (opts->binary)
 		return &CopyFromRoutineBinary;
