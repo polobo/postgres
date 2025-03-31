@@ -20,6 +20,7 @@
 
 #include "access/tableam.h"
 #include "commands/copyapi.h"
+#include "commands/copyto_internal.h"
 #include "commands/progress.h"
 #include "executor/execdesc.h"
 #include "executor/executor.h"
@@ -35,17 +36,6 @@
 #include "utils/memutils.h"
 #include "utils/rel.h"
 #include "utils/snapmgr.h"
-
-/*
- * Represents the different dest cases we need to worry about at
- * the bottom level
- */
-typedef enum CopyDest
-{
-	COPY_FILE,					/* to file (or a piped program) */
-	COPY_FRONTEND,				/* to frontend */
-	COPY_CALLBACK,				/* to callback function */
-} CopyDest;
 
 /*
  * This struct contains all the state variables used throughout a COPY TO
@@ -401,7 +391,7 @@ SendCopyBegin(CopyToState cstate)
 	for (i = 0; i < natts; i++)
 		pq_sendint16(&buf, format); /* per-column formats */
 	pq_endmessage(&buf);
-	cstate->copy_dest = COPY_FRONTEND;
+	cstate->copy_dest = COPY_DEST_FRONTEND;
 }
 
 static void
@@ -448,7 +438,7 @@ CopySendEndOfRow(CopyToState cstate)
 
 	switch (cstate->copy_dest)
 	{
-		case COPY_FILE:
+		case COPY_DEST_FILE:
 			if (fwrite(fe_msgbuf->data, fe_msgbuf->len, 1,
 					   cstate->copy_file) != 1 ||
 				ferror(cstate->copy_file))
@@ -482,11 +472,11 @@ CopySendEndOfRow(CopyToState cstate)
 							 errmsg("could not write to COPY file: %m")));
 			}
 			break;
-		case COPY_FRONTEND:
+		case COPY_DEST_FRONTEND:
 			/* Dump the accumulated row as one CopyData message */
 			(void) pq_putmessage(PqMsg_CopyData, fe_msgbuf->data, fe_msgbuf->len);
 			break;
-		case COPY_CALLBACK:
+		case COPY_DEST_CALLBACK:
 			cstate->data_dest_cb(fe_msgbuf->data, fe_msgbuf->len);
 			break;
 	}
@@ -507,7 +497,7 @@ CopySendTextLikeEndOfRow(CopyToState cstate)
 {
 	switch (cstate->copy_dest)
 	{
-		case COPY_FILE:
+		case COPY_DEST_FILE:
 			/* Default line termination depends on platform */
 #ifndef WIN32
 			CopySendChar(cstate, '\n');
@@ -515,7 +505,7 @@ CopySendTextLikeEndOfRow(CopyToState cstate)
 			CopySendString(cstate, "\r\n");
 #endif
 			break;
-		case COPY_FRONTEND:
+		case COPY_DEST_FRONTEND:
 			/* The FE/BE protocol uses \n as newline for all platforms */
 			CopySendChar(cstate, '\n');
 			break;
@@ -900,12 +890,12 @@ BeginCopyTo(ParseState *pstate,
 	/* See Multibyte encoding comment above */
 	cstate->encoding_embeds_ascii = PG_ENCODING_IS_CLIENT_ONLY(cstate->file_encoding);
 
-	cstate->copy_dest = COPY_FILE;	/* default */
+	cstate->copy_dest = COPY_DEST_FILE; /* default */
 
 	if (data_dest_cb)
 	{
 		progress_vals[1] = PROGRESS_COPY_TYPE_CALLBACK;
-		cstate->copy_dest = COPY_CALLBACK;
+		cstate->copy_dest = COPY_DEST_CALLBACK;
 		cstate->data_dest_cb = data_dest_cb;
 	}
 	else if (pipe)
