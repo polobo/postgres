@@ -22,7 +22,9 @@
 #include "access/table.h"
 #include "access/xact.h"
 #include "catalog/pg_authid.h"
-#include "commands/copy.h"
+#include "commands/copyapi.h"
+#include "commands/copyto_internal.h"
+#include "commands/copyfrom_internal.h"
 #include "commands/defrem.h"
 #include "executor/executor.h"
 #include "mb/pg_wchar.h"
@@ -521,43 +523,45 @@ ProcessCopyOptions(ParseState *pstate,
 
 		if (strcmp(defel->defname, "format") == 0)
 		{
-			char	   *fmt = defGetString(defel);
+			char	   *format = defGetString(defel);
+			List	   *qualified_format;
+			char	   *schema;
+			char	   *fmt;
+			Oid			arg_types[1];
+			Oid			handler = InvalidOid;
 
 			if (format_specified)
 				errorConflictingDefElem(defel, pstate);
 			format_specified = true;
-			if (strcmp(fmt, "text") == 0)
-				 /* default format */ ;
-			else if (strcmp(fmt, "csv") == 0)
-				opts_out->csv_mode = true;
-			else if (strcmp(fmt, "binary") == 0)
-				opts_out->binary = true;
-			else
+
+			qualified_format = stringToQualifiedNameList(format, NULL);
+			DeconstructQualifiedName(qualified_format, &schema, &fmt);
+			if (!schema || strcmp(schema, "pg_catalog") == 0)
 			{
-				List	   *qualified_format;
-				Oid			arg_types[1];
-				Oid			handler = InvalidOid;
-
-				qualified_format = stringToQualifiedNameList(fmt, NULL);
-				arg_types[0] = INTERNALOID;
-				handler = LookupFuncName(qualified_format, 1,
-										 arg_types, true);
-				if (!OidIsValid(handler))
-					ereport(ERROR,
-							(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-							 errmsg("COPY format \"%s\" not recognized", fmt),
-							 parser_errposition(pstate, defel->location)));
-
-				/* check that handler has correct return type */
-				if (get_func_rettype(handler) != COPY_HANDLEROID)
-					ereport(ERROR,
-							(errcode(ERRCODE_WRONG_OBJECT_TYPE),
-							 errmsg("function %s must return type %s",
-									fmt, "copy_handler"),
-							 parser_errposition(pstate, defel->location)));
-
-				opts_out->handler = handler;
+				if (strcmp(fmt, "csv") == 0)
+					opts_out->csv_mode = true;
+				else if (strcmp(fmt, "binary") == 0)
+					opts_out->binary = true;
 			}
+
+			arg_types[0] = INTERNALOID;
+			handler = LookupFuncName(qualified_format, 1,
+									 arg_types, true);
+			if (!OidIsValid(handler))
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						 errmsg("COPY format \"%s\" not recognized", format),
+						 parser_errposition(pstate, defel->location)));
+
+			/* check that handler has correct return type */
+			if (get_func_rettype(handler) != COPY_HANDLEROID)
+				ereport(ERROR,
+						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+						 errmsg("function %s must return type %s",
+								format, "copy_handler"),
+						 parser_errposition(pstate, defel->location)));
+
+			opts_out->handler = handler;
 		}
 		else if (strcmp(defel->defname, "freeze") == 0)
 		{
@@ -1039,4 +1043,37 @@ CopyGetAttnums(TupleDesc tupDesc, Relation rel, List *attnamelist)
 	}
 
 	return attnums;
+}
+
+Datum
+copy_text_handler(PG_FUNCTION_ARGS)
+{
+	bool		is_from = PG_GETARG_BOOL(0);
+
+	if (is_from)
+		PG_RETURN_POINTER(&CopyFromRoutineText);
+	else
+		PG_RETURN_POINTER(&CopyToRoutineText);
+}
+
+Datum
+copy_csv_handler(PG_FUNCTION_ARGS)
+{
+	bool		is_from = PG_GETARG_BOOL(0);
+
+	if (is_from)
+		PG_RETURN_POINTER(&CopyFromRoutineCSV);
+	else
+		PG_RETURN_POINTER(&CopyToRoutineCSV);
+}
+
+Datum
+copy_binary_handler(PG_FUNCTION_ARGS)
+{
+	bool		is_from = PG_GETARG_BOOL(0);
+
+	if (is_from)
+		PG_RETURN_POINTER(&CopyFromRoutineBinary);
+	else
+		PG_RETURN_POINTER(&CopyToRoutineBinary);
 }

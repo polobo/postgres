@@ -45,6 +45,7 @@
 #include "rewrite/rewriteHandler.h"
 #include "storage/fd.h"
 #include "tcop/tcopprot.h"
+#include "utils/fmgroids.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
 #include "utils/portal.h"
@@ -128,7 +129,7 @@ static void CopyFromBinaryEnd(CopyFromState cstate);
  */
 
 /* text format */
-static const CopyFromRoutine CopyFromRoutineText = {
+const CopyFromRoutine CopyFromRoutineText = {
 	.type = T_CopyFromRoutine,
 	.CopyFromInFunc = CopyFromTextLikeInFunc,
 	.CopyFromStart = CopyFromTextLikeStart,
@@ -137,7 +138,7 @@ static const CopyFromRoutine CopyFromRoutineText = {
 };
 
 /* CSV format */
-static const CopyFromRoutine CopyFromRoutineCSV = {
+const CopyFromRoutine CopyFromRoutineCSV = {
 	.type = T_CopyFromRoutine,
 	.CopyFromInFunc = CopyFromTextLikeInFunc,
 	.CopyFromStart = CopyFromTextLikeStart,
@@ -146,7 +147,7 @@ static const CopyFromRoutine CopyFromRoutineCSV = {
 };
 
 /* binary format */
-static const CopyFromRoutine CopyFromRoutineBinary = {
+const CopyFromRoutine CopyFromRoutineBinary = {
 	.type = T_CopyFromRoutine,
 	.CopyFromInFunc = CopyFromBinaryInFunc,
 	.CopyFromStart = CopyFromBinaryStart,
@@ -158,28 +159,23 @@ static const CopyFromRoutine CopyFromRoutineBinary = {
 static const CopyFromRoutine *
 CopyFromGetRoutine(const CopyFormatOptions *opts)
 {
-	if (OidIsValid(opts->handler))
-	{
-		Datum		datum;
-		Node	   *routine;
-
-		datum = OidFunctionCall1(opts->handler, BoolGetDatum(true));
-		routine = (Node *) DatumGetPointer(datum);
-		if (routine == NULL || !IsA(routine, CopyFromRoutine))
-			ereport(ERROR,
-					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-					 errmsg("COPY handler function %s.%s did not return CopyFromRoutine struct",
-							get_namespace_name(get_func_namespace(opts->handler)),
-							get_func_name(opts->handler))));
-		return castNode(CopyFromRoutine, routine);
-	}
-	else if (opts->csv_mode)
-		return &CopyFromRoutineCSV;
-	else if (opts->binary)
-		return &CopyFromRoutineBinary;
+	Oid			handler = opts->handler;
+	Datum		datum;
+	Node	   *routine;
 
 	/* default is text */
-	return &CopyFromRoutineText;
+	if (!OidIsValid(handler))
+		handler = F_TEXT_INTERNAL;
+
+	datum = OidFunctionCall1(handler, BoolGetDatum(true));
+	routine = (Node *) DatumGetPointer(datum);
+	if (routine == NULL || !IsA(routine, CopyFromRoutine))
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("COPY handler function %s.%s did not return CopyFromRoutine struct",
+						get_namespace_name(get_func_namespace(handler)),
+						get_func_name(handler))));
+	return castNode(CopyFromRoutine, routine);
 }
 
 /* Implementation of the start callback for text and CSV formats */

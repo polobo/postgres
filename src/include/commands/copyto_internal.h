@@ -14,7 +14,7 @@
 #ifndef COPYTO_INTERNAL_H
 #define COPYTO_INTERNAL_H
 
-#include "commands/copy.h"
+#include "commands/copyapi.h"
 #include "executor/execdesc.h"
 #include "executor/tuptable.h"
 #include "nodes/execnodes.h"
@@ -82,5 +82,9 @@ typedef struct CopyToStateData
 	/* For custom format implementation */
 	void	   *opaque;			/* private space */
 } CopyToStateData;
+
+extern PGDLLIMPORT const CopyToRoutine CopyToRoutineText;
+extern PGDLLIMPORT const CopyToRoutine CopyToRoutineCSV;
+extern PGDLLIMPORT const CopyToRoutine CopyToRoutineBinary;
 
 #endif							/* COPYTO_INTERNAL_H */

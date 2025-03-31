@@ -27,6 +27,7 @@ tests += {
   'bd': meson.current_build_dir(),
   'regress': {
     'sql': [
+      'builtin',
       'invalid',
       'no_schema',
       'schema',

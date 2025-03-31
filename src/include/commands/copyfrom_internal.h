@@ -14,7 +14,7 @@
 #ifndef COPYFROM_INTERNAL_H
 #define COPYFROM_INTERNAL_H
 
-#include "commands/copy.h"
+#include "commands/copyapi.h"
 #include "commands/trigger.h"
 #include "nodes/miscnodes.h"
 
@@ -196,5 +196,9 @@ extern bool CopyFromCSVOneRow(CopyFromState cstate, ExprContext *econtext,
 							  Datum *values, bool *nulls);
 extern bool CopyFromBinaryOneRow(CopyFromState cstate, ExprContext *econtext,
 								 Datum *values, bool *nulls);
+
+extern PGDLLIMPORT const CopyFromRoutine CopyFromRoutineText;
+extern PGDLLIMPORT const CopyFromRoutine CopyFromRoutineCSV;
+extern PGDLLIMPORT const CopyFromRoutine CopyFromRoutineBinary;
 
 #endif							/* COPYFROM_INTERNAL_H */

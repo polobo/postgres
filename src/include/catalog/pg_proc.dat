@@ -12485,4 +12485,15 @@
   proargtypes => 'int4',
   prosrc => 'gist_stratnum_common' },
 
+# COPY handlers
+{ oid => '8100', descr => 'text COPY FORMAT handler',
+  proname => 'text', provolatile => 'i', prorettype => 'copy_handler',
+  proargtypes => 'internal', prosrc => 'copy_text_handler' },
+{ oid => '8101', descr => 'csv COPY FORMAT handler',
+  proname => 'csv', provolatile => 'i', prorettype => 'copy_handler',
+  proargtypes => 'internal', prosrc => 'copy_csv_handler' },
+{ oid => '8102', descr => 'binary COPY FORMAT handler',
+  proname => 'binary', provolatile => 'i', prorettype => 'copy_handler',
+  proargtypes => 'internal', prosrc => 'copy_binary_handler' },
+
 ]

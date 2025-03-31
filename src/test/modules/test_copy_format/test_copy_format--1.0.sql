@@ -22,3 +22,18 @@ CREATE FUNCTION test_copy_format_wrong_return_value(internal)
 	RETURNS copy_handler
 	AS 'MODULE_PATHNAME', 'test_copy_format_wrong_return_value'
 	LANGUAGE C;
+
+CREATE FUNCTION text(internal)
+	RETURNS copy_handler
+	AS 'MODULE_PATHNAME', 'test_copy_format'
+	LANGUAGE C;
+
+CREATE FUNCTION csv(internal)
+	RETURNS copy_handler
+	AS 'MODULE_PATHNAME', 'test_copy_format'
+	LANGUAGE C;
+
+CREATE FUNCTION binary(internal)
+	RETURNS copy_handler
+	AS 'MODULE_PATHNAME', 'test_copy_format'
+	LANGUAGE C;
