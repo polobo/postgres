@@ -254,6 +254,7 @@ break is not needed in a wider output rendering.
   &plhandler;
   &fdwhandler;
   &tablesample-method;
+  &copy-handler;
   &custom-scan;
   &geqo;
   &tableam;

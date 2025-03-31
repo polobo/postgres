@@ -28,10 +28,10 @@ typedef struct CopyToRoutine
 	 * Set output function information. This callback is called once at the
 	 * beginning of COPY TO.
 	 *
+	 * 'atttypid' is the OID of data type used by the relation's attribute.
+	 *
 	 * 'finfo' can be optionally filled to provide the catalog information of
 	 * the output function.
-	 *
-	 * 'atttypid' is the OID of data type used by the relation's attribute.
 	 */
 	void		(*CopyToOutFunc) (CopyToState cstate, Oid atttypid,
 								  FmgrInfo *finfo);
@@ -70,12 +70,13 @@ typedef struct CopyFromRoutine
 	 * Set input function information. This callback is called once at the
 	 * beginning of COPY FROM.
 	 *
+	 * 'atttypid' is the OID of data type used by the relation's attribute.
+	 *
 	 * 'finfo' can be optionally filled to provide the catalog information of
 	 * the input function.
 	 *
 	 * 'typioparam' can be optionally filled to define the OID of the type to
-	 * pass to the input function.'atttypid' is the OID of data type used by
-	 * the relation's attribute.
+	 * pass to the input function.
 	 */
 	void		(*CopyFromInFunc) (CopyFromState cstate, Oid atttypid,
 								   FmgrInfo *finfo, Oid *typioparam);

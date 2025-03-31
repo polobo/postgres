@@ -1,0 +1,394 @@
+<!-- doc/src/sgml/copy-handler.sgml -->
+
+<chapter id="copy-handler">
+ <title>Writing a Copy Handler</title>
+
+ <indexterm zone="copy-handler">
+  <primary><literal>COPY</literal> handler</primary>
+ </indexterm>
+
+ <para>
+  <productname>PostgreSQL</productname> supports
+  custom <link linkend="sql-copy"><literal>COPY</literal></link> handlers;
+  adding additional <replaceable>format_name</replaceable> options to
+  the <literal>FORMAT</literal> clause.
+ </para>
+
+ <para>
+  At the SQL level, a copy handler method is represented by a single SQL
+  function (see <xref linkend="sql-createfunction"/>), typically implemented in
+  C, having the signature
+<synopsis>
+<replaceable>format_name</replaceable>(internal) RETURNS <literal>copy_handler</literal>
+</synopsis>
+  The function's name is then accepted as a
+  valid <replaceable>format_name</replaceable>. The return
+  pseudo-type <literal>copy_handler</literal> informs the system that this
+  function needs to be registered as a copy handler.
+  The <type>internal</type> argument is a dummy that prevents this function
+  from being called directly from an SQL command. As the handler
+  implementation must be server-lifetime immutable; this SQL function's
+  volatility should be marked immutable. The <literal>link_symbol</literal>
+  for this function is the name of the implementation function, described
+  next.
+ </para>
+
+ <para>
+  The implementation function signature expected for the function named
+  in the <literal>link_symbol</literal> is:
+<synopsis>
+Datum
+<replaceable>copy_format_handler</replaceable>(PG_FUNCTION_ARGS)
+</synopsis>
+  The convention for the name is to replace the word
+  <replaceable>format</replaceable> in the placeholder above with the value given
+  to <replaceable>format_name</replaceable> in the SQL function.
+  The first argument is a <type>boolean</type> that indicates whether the handler
+  must provide a pointer to its implementation for <literal>COPY FROM</literal>
+  (a <type>CopyFromRoutine *</type>). If <literal>false</literal>, the handler
+  must provide a pointer to its implementation of <literal>COPY TO</literal>
+  (a <type>CopyToRoutine *</type>). These structs are declared in
+  <filename>src/include/commands/copyapi.h</filename>.
+ </para>
+
+ <para>
+  The structs hold pointers to implementation functions for initializing,
+  starting, processing rows, and ending a copy operation. The specific
+  structures vary a bit between <literal>COPY FROM</literal> and
+  <literal>COPY TO</literal> so the next two sections describes each
+  in detail.
+ </para>
+
+ <sect1 id="copy-handler-from">
+  <title>Copy From Handler</title>
+
+  <para>
+   The opening to this chapter describes how the executor will call the main
+   handler function with, in this case,
+   a <type>boolean</type> <literal>true</literal>, and expect to receive a
+   <type>CopyFromRoutine *</type> <type>Datum</type>. This section describes
+   the components of the <type>CopyFromRoutine</type> struct.
+  </para>
+
+  <para>
+<programlisting>
+void
+CopyFromInFunc(CopyFromState cstate,
+               Oid atttypid,
+               FmgrInfo *finfo,
+               Oid *typioparam);
+</programlisting>
+
+   This sets input function information for the
+   given <literal>atttypid</literal> attribute. This function is called once
+   at the beginning of <literal>COPY FROM</literal>. If
+   this <literal>COPY</literal> handler doesn't use any input functions, this
+   function doesn't need to do anything.
+
+   <variablelist>
+    <varlistentry>
+     <term><literal>CopyFromState *cstate</literal></term>
+     <listitem>
+      <para>
+       This is an internal struct that contains all the state variables used
+       throughout a <literal>COPY FROM</literal> operation.
+      </para>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry>
+     <term><literal>Oid atttypid</literal></term>
+     <listitem>
+      <para>
+       This is the OID of data type used by the relation's attribute.
+      </para>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry>
+     <term><literal>FmgrInfo *finfo</literal></term>
+     <listitem>
+      <para>
+       This can be optionally filled to provide the catalog information of
+       the input function.
+      </para>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry>
+     <term><literal>Oid *typioparam</literal></term>
+     <listitem>
+      <para>
+       This can be optionally filled to define the OID of the type to
+       pass to the input function.
+      </para>
+     </listitem>
+    </varlistentry>
+   </variablelist>
+  </para>
+
+  <para>
+<programlisting>
+void
+CopyFromStart(CopyFromState cstate,
+              TupleDesc tupDesc);
+</programlisting>
+
+   This starts a <literal>COPY FROM</literal>. This function is called once at
+   the beginning of <literal>COPY FROM</literal>.
+
+   <variablelist>
+    <varlistentry>
+     <term><literal>CopyFromState *cstate</literal></term>
+     <listitem>
+      <para>
+       This is an internal struct that contains all the state variables used
+       throughout a <literal>COPY FROM</literal> operation.
+      </para>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry>
+     <term><literal>TupleDesc tupDesc</literal></term>
+     <listitem>
+      <para>
+       This is the tuple descriptor of the relation where the data needs to be
+       copied. This can be used for any initialization steps required by a
+       format.
+      </para>
+     </listitem>
+    </varlistentry>
+   </variablelist>
+  </para>
+
+  <para>
+<programlisting>
+bool
+CopyFromOneRow(CopyFromState cstate,
+               ExprContext *econtext,
+               Datum *values,
+               bool *nulls);
+</programlisting>
+
+   This reads one row from the source and fill <literal>values</literal>
+   and <literal>nulls</literal>. If there is one or more tuples to be read,
+   this must return <literal>true</literal>. If there are no more tuples to
+   read, this must return <literal>false</literal>.
+
+   <variablelist>
+    <varlistentry>
+     <term><literal>CopyFromState *cstate</literal></term>
+     <listitem>
+      <para>
+       This is an internal struct that contains all the state variables used
+       throughout a <literal>COPY FROM</literal> operation.
+      </para>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry>
+     <term><literal>ExprContext *econtext</literal></term>
+     <listitem>
+      <para>
+       This is used to evaluate default expression for each column that is
+       either not read from the file or is using
+       the <literal>DEFAULT</literal> option of <literal>COPY
+       FROM</literal>. It is <literal>NULL</literal> if no default values are
+       used.
+      </para>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry>
+     <term><literal>Datum *values</literal></term>
+     <listitem>
+      <para>
+       This is an output variable to store read tuples.
+      </para>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry>
+     <term><literal>bool *nulls</literal></term>
+     <listitem>
+      <para>
+       This is an output variable to store whether the read columns
+       are <literal>NULL</literal> or not.
+      </para>
+     </listitem>
+    </varlistentry>
+   </variablelist>
+  </para>
+
+  <para>
+<programlisting>
+void
+CopyFromEnd(CopyFromState cstate);
+</programlisting>
+
+   This ends a <literal>COPY FROM</literal>. This function is called once at
+   the end of <literal>COPY FROM</literal>.
+
+   <variablelist>
+    <varlistentry>
+     <term><literal>CopyFromState *cstate</literal></term>
+     <listitem>
+      <para>
+       This is an internal struct that contains all the state variables used
+       throughout a <literal>COPY FROM</literal> operation.
+      </para>
+     </listitem>
+    </varlistentry>
+   </variablelist>
+  </para>
+
+  <para>
+   TODO: Add CopyFromStateGetData() and CopyFromSkipErrowRow()?
+  </para>
+ </sect1>
+
+ <sect1 id="copy-handler-to">
+  <title>Copy To Handler</title>
+
+  <para>
+   The <literal>COPY</literal> handler function for <literal>COPY
+   TO</literal> returns a <type>CopyToRoutine</type> struct containing
+   pointers to the functions described below. All functions are required.
+  </para>
+
+  <para>
+<programlisting>
+void
+CopyToOutFunc(CopyToState cstate,
+              Oid atttypid,
+              FmgrInfo *finfo);
+</programlisting>
+
+   This sets output function information for the
+   given <literal>atttypid</literal> attribute. This function is called once
+   at the beginning of <literal>COPY TO</literal>. If
+   this <literal>COPY</literal> handler doesn't use any output functions, this
+   function doesn't need to do anything.
+
+   <variablelist>
+    <varlistentry>
+     <term><literal>CopyToState *cstate</literal></term>
+     <listitem>
+      <para>
+       This is an internal struct that contains all the state variables used
+       throughout a <literal>COPY TO</literal> operation.
+      </para>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry>
+     <term><literal>Oid atttypid</literal></term>
+     <listitem>
+      <para>
+       This is the OID of data type used by the relation's attribute.
+      </para>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry>
+     <term><literal>FmgrInfo *finfo</literal></term>
+     <listitem>
+      <para>
+       This can be optionally filled to provide the catalog information of
+       the output function.
+      </para>
+     </listitem>
+    </varlistentry>
+   </variablelist>
+  </para>
+
+  <para>
+<programlisting>
+void
+CopyToStart(CopyToState cstate,
+            TupleDesc tupDesc);
+</programlisting>
+
+   This starts a <literal>COPY TO</literal>. This function is called once at
+   the beginning of <literal>COPY TO</literal>.
+
+   <variablelist>
+    <varlistentry>
+     <term><literal>CopyToState *cstate</literal></term>
+     <listitem>
+      <para>
+       This is an internal struct that contains all the state variables used
+       throughout a <literal>COPY TO</literal> operation.
+      </para>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry>
+     <term><literal>TupleDesc tupDesc</literal></term>
+     <listitem>
+      <para>
+       This is the tuple descriptor of the relation where the data is read.
+      </para>
+     </listitem>
+    </varlistentry>
+   </variablelist>
+  </para>
+
+  <para>
+<programlisting>
+bool
+CopyToOneRow(CopyToState cstate,
+             TupleTableSlot *slot);
+</programlisting>
+
+   This writes one row stored in <literal>slot</literal> to the destination.
+
+   <variablelist>
+    <varlistentry>
+     <term><literal>CopyToState *cstate</literal></term>
+     <listitem>
+      <para>
+       This is an internal struct that contains all the state variables used
+       throughout a <literal>COPY TO</literal> operation.
+      </para>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry>
+     <term><literal>TupleTableSlot *slot</literal></term>
+     <listitem>
+      <para>
+       This is used to get row to be written.
+      </para>
+     </listitem>
+    </varlistentry>
+   </variablelist>
+  </para>
+
+  <para>
+<programlisting>
+void
+CopyToEnd(CopyToState cstate);
+</programlisting>
+
+   This ends a <literal>COPY TO</literal>. This function is called once at
+   the end of <literal>COPY TO</literal>.
+
+   <variablelist>
+    <varlistentry>
+     <term><literal>CopyToState *cstate</literal></term>
+     <listitem>
+      <para>
+       This is an internal struct that contains all the state variables used
+       throughout a <literal>COPY TO</literal> operation.
+      </para>
+     </listitem>
+    </varlistentry>
+   </variablelist>
+  </para>
+
+  <para>
+   TODO: Add CopyToStateFlush()?
+  </para>
+ </sect1>
+</chapter>
