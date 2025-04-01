@@ -3806,6 +3806,58 @@ SELECT NOT(ROW(table.*) IS NOT NULL) FROM TABLE; -- detect at least one null in 
        </para></entry>
       </row>
 
+
+      <row>
+       <entry role="func_table_entry"><para role="func_signature">
+        <function>substring</function> ( <parameter>string</parameter> <type>text</type>, <parameter>pattern</parameter> <type>text</type> )
+        <returnvalue>text</returnvalue>
+       </para>
+       <para>
+        Extracts the first substring matching POSIX regular expression; see
+        <xref linkend="functions-posix-regexp"/>.
+       </para>
+       <para>
+        <literal>substring('Thomas', '...$')</literal>
+        <returnvalue>mas</returnvalue>
+       </para></entry>
+      </row>
+
+      <row>
+       <entry role="func_table_entry"><para role="func_signature">
+        <function>substring</function> ( <parameter>string</parameter> <type>text</type>, <parameter>pattern</parameter> <type>text</type>, <parameter>escape_character </parameter> <type>text</type>)
+        <returnvalue>text</returnvalue>
+       </para>
+       <para>
+        Extracts the first substring matching <acronym>SQL</acronym> regular expression;
+        see <xref linkend="functions-similarto-regexp"/>.
+       </para>
+       <para>
+        <literal>substring('Thomas', '%#"o_a#"_', '#')</literal>
+        <returnvalue>oma</returnvalue>
+       </para></entry>
+      </row>
+
+      <row>
+       <entry role="func_table_entry"><para role="func_signature">
+        <indexterm>
+         <primary>substring</primary>
+        </indexterm>
+        <function>substring</function> ( <parameter>string</parameter> <type>text</type>, <parameter>start</parameter> <type>integer</type> <optional>, <parameter>count</parameter> <type>integer</type> </optional> )
+        <returnvalue>text</returnvalue>
+       </para>
+       <para>
+        Extracts the substring of <parameter>string</parameter> starting at
+        the <parameter>start</parameter>'th character,
+        and stopping after <parameter>count</parameter> characters if that is
+        specified.
+       </para>
+
+       <para>
+        <literal>substring('Thomas', 2, 3)</literal>
+        <returnvalue>hom</returnvalue>
+       </para></entry>
+      </row>
+
       <row>
        <entry role="func_table_entry"><para role="func_signature">
         <indexterm>
@@ -4811,6 +4863,27 @@ SELECT format('Testing %3$s, %2$s, %s', 'one', 'two', 'three');
         <returnvalue>\x5678</returnvalue>
        </para></entry>
       </row>
+
+      <row>
+       <entry role="func_table_entry"><para role="func_signature">
+        <indexterm>
+         <primary>substring</primary>
+        </indexterm>
+        <function>substring</function> ( <parameter>bytes</parameter> <type>bytea</type>, <parameter>start</parameter> <type>integer</type> <optional>, <parameter>count</parameter> <type>integer</type> </optional> )
+        <returnvalue>bytea</returnvalue>
+       </para>
+       <para>
+        Extracts the substring of <parameter>bytes</parameter> starting at
+        the <parameter>start</parameter>'th byte,
+        and stopping after <parameter>count</parameter> bytes if that is
+        specified.
+       </para>
+       <para>
+        <literal>substring('\x1234567890'::bytea, 3, 2)</literal>
+        <returnvalue>\x5678</returnvalue>
+       </para></entry>
+      </row>
+
     </tbody>
    </tgroup>
   </table>
@@ -5358,6 +5431,26 @@ cast(-1234 as bytea)           <lineannotation>\xfffffb2e</lineannotation>
         <indexterm>
          <primary>substring</primary>
         </indexterm>
+        <function>substring</function> ( <parameter>bits</parameter> <type>bit</type>, <parameter>start</parameter> <type>integer</type> <optional>, <parameter>count</parameter> <type>integer</type> </optional> )
+        <returnvalue>bit</returnvalue>
+       </para>
+       <para>
+        Extracts the substring of <parameter>bits</parameter> starting at
+        the <parameter>start</parameter>'th bit,
+        and stopping after <parameter>count</parameter> bits if that is
+        specified.
+       </para>
+       <para>
+        <literal>substring(B'110010111111', 3, 2)</literal>
+        <returnvalue>00</returnvalue>
+       </para></entry>
+      </row>
+
+      <row>
+       <entry role="func_table_entry"><para role="func_signature">
+        <indexterm>
+         <primary>substring</primary>
+        </indexterm>
         <function>substring</function> ( <parameter>bits</parameter> <type>bit</type> <optional> <literal>FROM</literal> <parameter>start</parameter> <type>integer</type> </optional> <optional> <literal>FOR</literal> <parameter>count</parameter> <type>integer</type> </optional> )
         <returnvalue>bit</returnvalue>
        </para>
@@ -5816,7 +5909,7 @@ substring(<replaceable>string</replaceable> from <replaceable>pattern</replaceab
 </synopsis>
     or as a plain three-argument function:
 <synopsis>
-substring(<replaceable>string</replaceable>, <replaceable>pattern</replaceable>, <replaceable>escape-character</replaceable>)
+substring(<replaceable>string</replaceable>, <replaceable>pattern</replaceable>, <replaceable>escape_character</replaceable>)
 </synopsis>
     As with <literal>SIMILAR TO</literal>, the
     specified pattern must match the entire data string, or else the
@@ -6020,11 +6113,17 @@ substring('foobar' similar '#"o_b#"%' escape '#')    <lineannotation>NULL</linea
     </para>
 
     <para>
-     The <function>substring</function> function with two parameters,
-     <function>substring(<replaceable>string</replaceable> from
-     <replaceable>pattern</replaceable>)</function>, provides extraction of a
-     substring
-     that matches a POSIX regular expression pattern.  It returns null if
+     The <function>substring</function> function with two parameters provides extraction of a
+     substring that matches a POSIX regular expression pattern.
+     It has syntax:
+<synopsis>
+substring(<replaceable>string</replaceable> from <replaceable>pattern</replaceable>)
+</synopsis>
+     It can also written as a plain two-argument function:
+<synopsis>
+substring(<replaceable>string</replaceable>, <replaceable>pattern</replaceable>)
+</synopsis>
+     It returns null if
      there is no match, otherwise the first portion of the text that matched the
      pattern.  But if the pattern contains any parentheses, the portion
      of the text that matched the first parenthesized subexpression (the
