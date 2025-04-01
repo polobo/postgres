@@ -6451,6 +6451,7 @@
 { oid => '2074', descr => 'extract text matching SQL regular expression',
   proname => 'substring', prolang => 'sql', prorettype => 'text',
   proargnames => '{string, pattern, escape_character}',
+  proargnames => '{string, pattern, escape}',
   proargtypes => 'text text text', prosrc => 'see system_functions.sql' },
 
 { oid => '2075', descr => 'convert int8 to bitstring',

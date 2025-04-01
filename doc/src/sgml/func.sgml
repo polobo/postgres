@@ -2837,7 +2837,8 @@ SELECT NOT(ROW(table.*) IS NOT NULL) FROM TABLE; -- detect at least one null in 
        </para>
        <para>
         Extracts the first substring matching POSIX regular expression; see
-        <xref linkend="functions-posix-regexp"/>.
+        <xref linkend="functions-posix-regexp"/>.  (Same as
+        <literal>substring(string text, pattern text)</literal>.)
        </para>
        <para>
         <literal>substring('Thomas' from '...$')</literal>
@@ -2850,19 +2851,18 @@ SELECT NOT(ROW(table.*) IS NOT NULL) FROM TABLE; -- detect at least one null in 
         <function>substring</function> ( <parameter>string</parameter> <type>text</type> <literal>SIMILAR</literal> <parameter>pattern</parameter> <type>text</type> <literal>ESCAPE</literal> <parameter>escape</parameter> <type>text</type> )
         <returnvalue>text</returnvalue>
        </para>
-       <para role="func_signature">
-        <function>substring</function> ( <parameter>string</parameter> <type>text</type> <literal>FROM</literal> <parameter>pattern</parameter> <type>text</type> <literal>FOR</literal> <parameter>escape</parameter> <type>text</type> )
-        <returnvalue>text</returnvalue>
-       </para>
        <para>
         Extracts the first substring matching <acronym>SQL</acronym> regular expression;
-        see <xref linkend="functions-similarto-regexp"/>.  The first form has
-        been specified since SQL:2003; the second form was only in SQL:1999
-        and should be considered obsolete.
+        see <xref linkend="functions-similarto-regexp"/>.  (Same as
+        <literal>substring(string text, pattern text, escape text)</literal>.)
        </para>
        <para>
         <literal>substring('Thomas' similar '%#"o_a#"_' escape '#')</literal>
         <returnvalue>oma</returnvalue>
+       </para>
+       <para>
+        Obsolescence note: SQL:1999 introduced this function with <literal>FROM</literal>
+        and <literal>FOR</literal> as the keywords but switched to this in SQL:2003.
        </para></entry>
       </row>
 
@@ -3814,7 +3814,8 @@ SELECT NOT(ROW(table.*) IS NOT NULL) FROM TABLE; -- detect at least one null in 
        </para>
        <para>
         Extracts the first substring matching POSIX regular expression; see
-        <xref linkend="functions-posix-regexp"/>.
+        <xref linkend="functions-posix-regexp"/>.  (Same as
+        <literal>substring(string text FROM pattern text)</literal>.)
        </para>
        <para>
         <literal>substring('Thomas', '...$')</literal>
@@ -3824,12 +3825,13 @@ SELECT NOT(ROW(table.*) IS NOT NULL) FROM TABLE; -- detect at least one null in 
 
       <row>
        <entry role="func_table_entry"><para role="func_signature">
-        <function>substring</function> ( <parameter>string</parameter> <type>text</type>, <parameter>pattern</parameter> <type>text</type>, <parameter>escape_character </parameter> <type>text</type>)
+        <function>substring</function> ( <parameter>string</parameter> <type>text</type>, <parameter>pattern</parameter> <type>text</type>, <parameter>escape </parameter> <type>text</type>)
         <returnvalue>text</returnvalue>
        </para>
        <para>
         Extracts the first substring matching <acronym>SQL</acronym> regular expression;
-        see <xref linkend="functions-similarto-regexp"/>.
+        see <xref linkend="functions-similarto-regexp"/>.  (Same as
+        <literal>substring(string text SIMILAR pattern text ESCAPE escape text)</literal>.)
        </para>
        <para>
         <literal>substring('Thomas', '%#"o_a#"_', '#')</literal>
@@ -5593,8 +5595,8 @@ cast(-44 as bit(12))           <lineannotation>111111010100</lineannotation>
    </indexterm>
 
 <synopsis>
-<replaceable>string</replaceable> LIKE <replaceable>pattern</replaceable> <optional>ESCAPE <replaceable>escape-character</replaceable></optional>
-<replaceable>string</replaceable> NOT LIKE <replaceable>pattern</replaceable> <optional>ESCAPE <replaceable>escape-character</replaceable></optional>
+<replaceable>string</replaceable> LIKE <replaceable>pattern</replaceable> <optional>ESCAPE <replaceable>escape</replaceable></optional>
+<replaceable>string</replaceable> NOT LIKE <replaceable>pattern</replaceable> <optional>ESCAPE <replaceable>escape</replaceable></optional>
 </synopsis>
 
     <para>
@@ -5766,8 +5768,8 @@ cast(-44 as bit(12))           <lineannotation>111111010100</lineannotation>
    </indexterm>
 
 <synopsis>
-<replaceable>string</replaceable> SIMILAR TO <replaceable>pattern</replaceable> <optional>ESCAPE <replaceable>escape-character</replaceable></optional>
-<replaceable>string</replaceable> NOT SIMILAR TO <replaceable>pattern</replaceable> <optional>ESCAPE <replaceable>escape-character</replaceable></optional>
+<replaceable>string</replaceable> SIMILAR TO <replaceable>pattern</replaceable> <optional>ESCAPE <replaceable>escape</replaceable></optional>
+<replaceable>string</replaceable> NOT SIMILAR TO <replaceable>pattern</replaceable> <optional>ESCAPE <replaceable>escape</replaceable></optional>
 </synopsis>
 
    <para>
@@ -5901,15 +5903,11 @@ cast(-44 as bit(12))           <lineannotation>111111010100</lineannotation>
     regular expression pattern.  The function can be written according
     to standard SQL syntax:
 <synopsis>
-substring(<replaceable>string</replaceable> similar <replaceable>pattern</replaceable> escape <replaceable>escape-character</replaceable>)
+substring(<replaceable>string</replaceable> SIMILAR <replaceable>pattern</replaceable> ESCAPE <replaceable>escape</replaceable>)
 </synopsis>
-    or using the now obsolete SQL:1999 syntax:
+    It can also written as a plain three-argument function:
 <synopsis>
-substring(<replaceable>string</replaceable> from <replaceable>pattern</replaceable> for <replaceable>escape-character</replaceable>)
-</synopsis>
-    or as a plain three-argument function:
-<synopsis>
-substring(<replaceable>string</replaceable>, <replaceable>pattern</replaceable>, <replaceable>escape_character</replaceable>)
+substring(<replaceable>string</replaceable>, <replaceable>pattern</replaceable>, <replaceable>escape</replaceable>)
 </synopsis>
     As with <literal>SIMILAR TO</literal>, the
     specified pattern must match the entire data string, or else the
@@ -6115,9 +6113,9 @@ substring('foobar' similar '#"o_b#"%' escape '#')    <lineannotation>NULL</linea
     <para>
      The <function>substring</function> function with two parameters provides extraction of a
      substring that matches a POSIX regular expression pattern.
-     It has syntax:
+     The function can be written according to standard SQL syntax:
 <synopsis>
-substring(<replaceable>string</replaceable> from <replaceable>pattern</replaceable>)
+substring(<replaceable>string</replaceable> FROM <replaceable>pattern</replaceable>)
 </synopsis>
      It can also written as a plain two-argument function:
 <synopsis>
