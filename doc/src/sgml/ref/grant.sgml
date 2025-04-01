@@ -518,6 +518,15 @@ GRANT admins TO joe;
    </para>
 
    <para>
+    In PostgreSQL, the concept of relation encompassess the various
+    table-like objects it supports.  Sequences are one of these types; and
+    therefore the <literal>GRANT ... ON [ TABLE ]</literal> variant will
+    accept a sequence name as the target object.  It will produce a warning
+    if the permission being granted is not appropriate for a sequence, and
+    will accept and process the undocumented <literal>USAGE</literal> privilege.
+   </para>
+
+   <para>
     Privileges on databases, tablespaces, schemas, languages, and
     configuration parameters are
     <productname>PostgreSQL</productname> extensions.
