@@ -127,8 +127,10 @@ task:
         cube/regress pg_ctl/001_start_stop
     EOF
 
-  on_failure:
+  always:
     <<: *on_failure_meson
+
+  on_failure:
     cores_script: |
       mkdir -m 770 /tmp/cores
       find / -maxdepth 1 -type f -name 'core*' -exec mv '{}' /tmp/cores/ \;
