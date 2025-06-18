@@ -445,6 +445,8 @@ environment value
 border                   1
 columns                  0
 csv_fieldsep             ','
+display_true             't'
+display_false            'f'
 expanded                 off
 fieldsep                 '|'
 fieldsep_zero            off
