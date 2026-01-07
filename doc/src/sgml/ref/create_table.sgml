@@ -633,6 +633,15 @@ WITH ( MODULUS <replaceable class="parameter">numeric_literal</replaceable>, REM
       concurrent operations on the partitioned table.
      </para>
 
+     <para>
+      When a new partition is created, it generally inherits the current
+      definition-level properties of the parent partitioned table. However,
+      some table properties are not inherited automatically. In particular,
+      properties related to ownership, schema, replica identity, row-level
+      security configuration, per-attribute statistics targets, and
+      per-attribute options are not inherited unless explicitly specified
+      for the partition.
+     </para>
     </listitem>
    </varlistentry>
 
