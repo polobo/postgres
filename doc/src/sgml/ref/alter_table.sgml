@@ -202,6 +202,11 @@ WITH ( MODULUS <replaceable class="parameter">numeric_literal</replaceable>, REM
       partitions. Specifying <literal>ONLY</literal> is not allowed, and
       this command cannot be used on individual partitions.
      </para>
+     <para>
+      For inheritance setups, a descendant column is removed only if both: this
+      is the only parent defining the column, and the column was never independently
+      defined.
+     </para>
     </listitem>
    </varlistentry>
 
@@ -571,6 +576,11 @@ WITH ( MODULUS <replaceable class="parameter">numeric_literal</replaceable>, REM
       partitioned table and is implicitly added to all partitions.
       Specifying <literal>ONLY</literal> is not allowed.
      </para>
+     <para>
+      For inheritance setups, the constraint is not added to child tables
+      unless it is a <literal>CHECK</literal> constraint with the (implicit)
+      <literal>INHERIT</literal> property.
+     </para>
     </listitem>
    </varlistentry>
 
@@ -683,7 +693,8 @@ WITH ( MODULUS <replaceable class="parameter">numeric_literal</replaceable>, REM
       When applied to a partitioned table, the constraint is validated on the
       partitioned table and on all partitions. Unlike most constraint-related
       sub-commands, individual partitions may validate the constraint
-      independently of the partitioned table.
+      independently of the partitioned table, so long as the partitioned
+      table itself is not yet validated.
      </para>
     </listitem>
    </varlistentry>
@@ -748,6 +759,10 @@ WITH ( MODULUS <replaceable class="parameter">numeric_literal</replaceable>, REM
       When this command is applied to a partitioned table, the states of
       corresponding clone triggers are updated too, unless <literal>ONLY</literal>
       is specified.
+     </para>
+     <para>
+      For inheritance setups <literal>ONLY</literal> is implied, though it may
+      be specified.
      </para>
      <para>
       This command acquires a <literal>SHARE ROW EXCLUSIVE</literal> lock.
@@ -1146,9 +1161,13 @@ WITH ( MODULUS <replaceable class="parameter">numeric_literal</replaceable>, REM
       There is no effect on the stored data.
      </para>
      <para>
-      For partitioned tables, this form behaves the same as for regular
-      tables. Renaming a partitioned table, column, or constraint does not
-      propagate to partitions.
+      When applied to a partitioned table, partition columns constraints
+      are implicitly renamed and specifying <literal>ONLY</literal> is not allowed.
+     </para>
+     <para>
+      For inheritance setups, index-based constraints are always considered
+      independent.  Dependent columns and constraints are implicitly renamed
+      and specifying <literal>ONLY</literal> is not allowed.
      </para>
     </listitem>
    </varlistentry>
@@ -1919,6 +1938,13 @@ WITH ( MODULUS <replaceable class="parameter">numeric_literal</replaceable>, REM
     TYPE</literal>, and then use <literal>SET DEFAULT</literal> to add a suitable new
     default.  Similar considerations apply to indexes and constraints involving
     the column.
+   </para>
+
+   <para>
+    For inheritance setups, the behavior described for partitioned tables applies
+    only to the dependent column(s) on the descendant table(s).  It is always
+    allowed to target a descendant table with column altering commands on independent
+    columns.
    </para>
 
    <para>
